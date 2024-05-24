@@ -155,7 +155,7 @@ bom {
 			releaseNotes("https://github.com/mojohaus/build-helper-maven-plugin/releases/tag/{version}")
 		}
 	}
-	library("Byte Buddy", "1.14.15") {
+	library("Byte Buddy", "1.14.16") {
 		group("net.bytebuddy") {
 			modules = [
 				"byte-buddy",
@@ -199,7 +199,7 @@ bom {
 			releaseNotes("https://github.com/ben-manes/caffeine/releases/tag/v{version}")
 		}
 	}
-	library("Cassandra Driver", "4.18.0") {
+	library("Cassandra Driver", "4.18.1") {
 		group("org.apache.cassandra") {
 			imports = [
 				"java-driver-bom"
@@ -509,11 +509,7 @@ bom {
 			releaseNotes("https://github.com/hazelcast/hazelcast/releases/tag/v{version}")
 		}
 	}
-	library("Hibernate", "6.5.0.Final") {
-		prohibit {
-			versionRange "[6.5.1.Final,6.5.1.Final]"
-			because "it contains a regression (https://hibernate.atlassian.net/browse/HHH-18108)"
-		}
+	library("Hibernate", "6.5.2.Final") {
 		group("org.hibernate.orm") {
 			modules = [
 				"hibernate-agroal",
@@ -615,7 +611,7 @@ bom {
 			]
 		}
 	}
-	library("Infinispan", "15.0.3.Final") {
+	library("Infinispan", "15.0.4.Final") {
 		group("org.infinispan") {
 			imports = [
 				"infinispan-bom"
@@ -765,14 +761,14 @@ bom {
 			]
 		}
 	}
-	library("Jakarta XML SOAP", "3.0.1") {
+	library("Jakarta XML SOAP", "3.0.2") {
 		group("jakarta.xml.soap") {
 			modules = [
 					"jakarta.xml.soap-api"
 			]
 		}
 	}
-	library("Jakarta XML WS", "4.0.1") {
+	library("Jakarta XML WS", "4.0.2") {
 		group("jakarta.xml.ws") {
 			modules = [
 				"jakarta.xml.ws-api"
@@ -852,7 +848,7 @@ bom {
 			releaseNotes("https://github.com/eclipse-ee4j/jersey/releases/tag/{version}")
 		}
 	}
-	library("Jetty Reactive HTTPClient", "4.0.3") {
+	library("Jetty Reactive HTTPClient", "4.0.4") {
 		group("org.eclipse.jetty") {
 			modules = [
 				"jetty-reactive-httpclient"
@@ -1243,7 +1239,7 @@ bom {
 			]
 		}
 	}
-	library("Micrometer", "1.13.0-SNAPSHOT") {
+	library("Micrometer", "1.13.0") {
 		considerSnapshots()
 		group("io.micrometer") {
 			modules = [
@@ -1262,7 +1258,7 @@ bom {
 			releaseNotes("https://github.com/micrometer-metrics/micrometer/releases/tag/v{version}")
 		}
 	}
-	library("Micrometer Tracing", "1.3.0-SNAPSHOT") {
+	library("Micrometer Tracing", "1.3.0") {
 		considerSnapshots()
 		calendarName = "Tracing"
 		group("io.micrometer") {
@@ -1372,7 +1368,7 @@ bom {
 			releaseNotes("https://github.com/neo4j/neo4j-java-driver/releases/tag/{version}")
 		}
 	}
-	library("Netty", "4.1.109.Final") {
+	library("Netty", "4.1.110.Final") {
 		group("io.netty") {
 			imports = [
 				"netty-bom"
@@ -1512,7 +1508,7 @@ bom {
 			releaseNotes("https://github.com/prometheus/client_java/releases/tag/parent-{version}")
 		}
 	}
-	library("Pulsar", "3.2.2") {
+	library("Pulsar", "3.2.3") {
 		group("org.apache.pulsar") {
 			imports = [
 				"pulsar-bom"
@@ -1525,7 +1521,7 @@ bom {
 			releaseNotes("https://pulsar.apache.org/release-notes/versioned/pulsar-{version}")
 		}
 	}
-	library("Pulsar Reactive", "0.5.4") {
+	library("Pulsar Reactive", "0.5.5") {
 		group("org.apache.pulsar") {
 			modules = [
 				"pulsar-client-reactive-adapter",
@@ -1660,7 +1656,7 @@ bom {
 			]
 		}
 	}
-	library("Reactor Bom", "2023.0.6-SNAPSHOT") {
+	library("Reactor Bom", "2023.0.6") {
 		considerSnapshots()
 		calendarName = "Reactor"
 		group("io.projectreactor") {
@@ -1793,7 +1789,7 @@ bom {
 				.formatted(version.major(), version.minor()) }
 		}
 	}
-	library("SAAJ Impl", "3.0.3") {
+	library("SAAJ Impl", "3.0.4") {
 		group("com.sun.xml.messaging.saaj") {
 			modules = [
 				"saaj-impl"
@@ -1857,7 +1853,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "3.1.4") {
+	library("Spring AMQP", "3.1.5") {
 		considerSnapshots()
 		group("org.springframework.amqp") {
 			imports = [
@@ -1872,7 +1868,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-amqp/releases/tag/v{version}")
 		}
 	}
-	library("Spring Authorization Server", "1.3.0-SNAPSHOT") {
+	library("Spring Authorization Server", "1.3.0") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			modules = [
@@ -1888,7 +1884,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-authorization-server/releases/tag/{version}")
 		}
 	}
-	library("Spring Batch", "5.1.2-SNAPSHOT") {
+	library("Spring Batch", "5.1.2") {
 		considerSnapshots()
 		group("org.springframework.batch") {
 			imports = [
@@ -1904,7 +1900,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-batch/releases/tag/v{version}")
 		}
 	}
-	library("Spring Data Bom", "2024.0.0-SNAPSHOT") {
+	library("Spring Data Bom", "2024.0.0") {
 		considerSnapshots()
 		calendarName = "Spring Data Release"
 		group("org.springframework.data") {
@@ -1933,7 +1929,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-framework/releases/tag/v{version}")
 		}
 	}
-	library("Spring GraphQL", "1.3.0-SNAPSHOT") {
+	library("Spring GraphQL", "1.3.0") {
 		considerSnapshots()
 		group("org.springframework.graphql") {
 			modules = [
@@ -1950,7 +1946,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-graphql/releases/tag/v{version}")
 		}
 	}
-	library("Spring HATEOAS", "2.3.0-SNAPSHOT") {
+	library("Spring HATEOAS", "2.3.0") {
 		considerSnapshots()
 		group("org.springframework.hateoas") {
 			modules = [
@@ -1965,7 +1961,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-hateoas/releases/tag/{version}")
 		}
 	}
-	library("Spring Integration", "6.3.0-SNAPSHOT") {
+	library("Spring Integration", "6.3.0") {
 		considerSnapshots()
 		group("org.springframework.integration") {
 			imports = [
@@ -1981,7 +1977,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-integration/releases/tag/v{version}")
 		}
 	}
-	library("Spring Kafka", "3.2.0-SNAPSHOT") {
+	library("Spring Kafka", "3.2.0") {
 		considerSnapshots()
 		group("org.springframework.kafka") {
 			modules = [
@@ -2016,7 +2012,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ldap/releases/tag/{version}")
 		}
 	}
-	library("Spring Pulsar", "1.1.0-SNAPSHOT") {
+	library("Spring Pulsar", "1.1.0") {
 		considerSnapshots()
 		group("org.springframework.pulsar") {
 			imports = [
@@ -2046,7 +2042,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-restdocs/releases/tag/v{version}")
 		}
 	}
-	library("Spring Retry", "2.0.5") {
+	library("Spring Retry", "2.0.6") {
 		considerSnapshots()
 		group("org.springframework.retry") {
 			modules = [
@@ -2058,7 +2054,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-retry/releases/tag/v{version}")
 		}
 	}
-	library("Spring Security", "6.3.0-SNAPSHOT") {
+	library("Spring Security", "6.3.0") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			imports = [
@@ -2074,7 +2070,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-security/releases/tag/{version}")
 		}
 	}
-	library("Spring Session", "3.3.0-SNAPSHOT") {
+	library("Spring Session", "3.3.0") {
 		considerSnapshots()
 		prohibit {
 			startsWith(["Apple-", "Bean-", "Corn-", "Dragonfruit-"])
@@ -2094,7 +2090,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-session/releases/tag/{version}")
 		}
 	}
-	library("Spring WS", "4.0.11-SNAPSHOT") {
+	library("Spring WS", "4.0.11") {
 		considerSnapshots()
 		group("org.springframework.ws") {
 			imports = [
