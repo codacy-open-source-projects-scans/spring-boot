@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 the original author or authors.
+ * Copyright 2012-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,6 +117,13 @@ public abstract class BuildImageMojo extends AbstractPackagerMojo {
 	 */
 	@Parameter(property = "spring-boot.build-image.builder", readonly = true)
 	String imageBuilder;
+
+	/**
+	 * Alias for {@link Image#trustBuilder} to support configuration through command-line
+	 * property.
+	 */
+	@Parameter(property = "spring-boot.build-image.trustBuilder", readonly = true)
+	Boolean trustBuilder;
 
 	/**
 	 * Alias for {@link Image#runImage} to support configuration through command-line
@@ -246,9 +253,10 @@ public abstract class BuildImageMojo extends AbstractPackagerMojo {
 	private void buildImage() throws MojoExecutionException {
 		Libraries libraries = getLibraries(Collections.emptySet());
 		try {
-			DockerConfiguration dockerConfiguration = (this.docker != null) ? this.docker.asDockerConfiguration()
-					: new Docker().asDockerConfiguration();
 			BuildRequest request = getBuildRequest(libraries);
+			DockerConfiguration dockerConfiguration = (this.docker != null)
+					? this.docker.asDockerConfiguration(request.isPublish())
+					: new Docker().asDockerConfiguration(request.isPublish());
 			Builder builder = new Builder(new MojoBuildLog(this::getLog), dockerConfiguration);
 			builder.build(request);
 		}
@@ -266,6 +274,9 @@ public abstract class BuildImageMojo extends AbstractPackagerMojo {
 		}
 		if (image.builder == null && this.imageBuilder != null) {
 			image.setBuilder(this.imageBuilder);
+		}
+		if (image.trustBuilder == null && this.trustBuilder != null) {
+			image.setTrustBuilder(this.trustBuilder);
 		}
 		if (image.runImage == null && this.runImage != null) {
 			image.setRunImage(this.runImage);
