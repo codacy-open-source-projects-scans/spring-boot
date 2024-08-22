@@ -43,7 +43,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.springframework.util.Assert;
 
 /**
- * References to container images used for integration tests. This class also acts a a
+ * References to container images used for integration tests. This class also acts a
  * central location for tests to {@link #container(Class) create} a correctly configured
  * {@link Container testcontainer}.
  *
@@ -173,7 +173,7 @@ public enum TestImage {
 	/**
 	 * A container image suitable for testing Pulsar.
 	 */
-	PULSAR("apachepulsar/pulsar", "3.2.0", () -> PulsarContainer.class,
+	PULSAR("apachepulsar/pulsar", "3.2.4", () -> PulsarContainer.class,
 			(container) -> ((PulsarContainer) container).withStartupAttempts(2)
 				.withStartupTimeout(Duration.ofMinutes(3))),
 
