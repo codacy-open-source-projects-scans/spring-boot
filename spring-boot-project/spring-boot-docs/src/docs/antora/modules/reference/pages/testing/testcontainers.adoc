@@ -71,6 +71,9 @@ The following service connection factories are provided in the `spring-boot-test
 | `Neo4jConnectionDetails`
 | Containers of type `Neo4jContainer`
 
+| `OtlpLoggingConnectionDetails`
+| Containers named "otel/opentelemetry-collector-contrib"
+
 | `OtlpMetricsConnectionDetails`
 | Containers named "otel/opentelemetry-collector-contrib" or of type `LgtmStackContainer`
 
@@ -87,7 +90,7 @@ The following service connection factories are provided in the `spring-boot-test
 | Containers of type `RabbitMQContainer`
 
 | `RedisConnectionDetails`
-| Containers named "redis", "redis/redis-stack" or "redis/redis-stack-server"
+| Containers of type `com.redis.testcontainers.RedisContainer` or `com.redis.testcontainers.RedisStackContainer`, or containers named "redis", "redis/redis-stack" or "redis/redis-stack-server"
 
 | `ZipkinConnectionDetails`
 | Containers named "openzipkin/zipkin"
