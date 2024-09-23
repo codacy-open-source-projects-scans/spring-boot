@@ -103,7 +103,7 @@ bom {
 				.formatted(version.major(), version.minor()) }
 		}
 	}
-	library("Zipkin Reporter", "3.4.1") {
+	library("Zipkin Reporter", "3.4.2") {
 		group("io.zipkin.reporter2") {
 			imports = [
 				"zipkin-reporter-bom"
@@ -500,7 +500,7 @@ bom {
 			releaseNotes("https://github.com/hazelcast/hazelcast/releases/tag/v{version}")
 		}
 	}
-	library("Hibernate", "6.6.0.Final") {
+	library("Hibernate", "6.6.1.Final") {
 		group("org.hibernate.orm") {
 			modules = [
 				"hibernate-agroal",
@@ -1079,6 +1079,10 @@ bom {
 		}
 	}
 	library("Kotlin Coroutines", "1.8.1") {
+		prohibit {
+			versionRange "[1.9.0,)"
+			because "it requires Kotlin 2"
+		}
 		group("org.jetbrains.kotlinx") {
 			imports = [
 				"kotlinx-coroutines-bom"
@@ -1606,7 +1610,7 @@ bom {
 			]
 		}
 	}
-	library("R2DBC MariaDB", "1.2.1") {
+	library("R2DBC MariaDB", "1.2.2") {
 		group("org.mariadb") {
 			modules = [
 				"r2dbc-mariadb"
@@ -1667,7 +1671,7 @@ bom {
 			javadoc("https://r2dbc.io/spec/{version}/api")
 		}
 	}
-	library("Rabbit AMQP Client", "5.21.0") {
+	library("Rabbit AMQP Client", "5.22.0") {
 		group("com.rabbitmq") {
 			modules = [
 				"amqp-client"
@@ -1859,7 +1863,7 @@ bom {
 			releaseNotes("https://github.com/SeleniumHQ/htmlunit-driver/releases/tag/htmlunit-driver-{version}")
 		}
 	}
-	library("SendGrid", "4.10.2") {
+	library("SendGrid", "4.10.3") {
 		group("com.sendgrid") {
 			modules = [
 				"sendgrid-java"
@@ -1894,7 +1898,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "3.2.0-SNAPSHOT") {
+	library("Spring AMQP", "3.2.0-M3") {
 		considerSnapshots()
 		group("org.springframework.amqp") {
 			imports = [
@@ -1911,7 +1915,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-amqp/releases/tag/v{version}")
 		}
 	}
-	library("Spring Authorization Server", "1.4.0-SNAPSHOT") {
+	library("Spring Authorization Server", "1.4.0-M2") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			modules = [
@@ -1928,7 +1932,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-authorization-server/releases/tag/{version}")
 		}
 	}
-	library("Spring Batch", "5.2.0-SNAPSHOT") {
+	library("Spring Batch", "5.2.0-M1") {
 		considerSnapshots()
 		group("org.springframework.batch") {
 			imports = [
@@ -2011,7 +2015,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-hateoas/releases/tag/{version}")
 		}
 	}
-	library("Spring Integration", "6.4.0-SNAPSHOT") {
+	library("Spring Integration", "6.4.0-M3") {
 		considerSnapshots()
 		group("org.springframework.integration") {
 			imports = [
@@ -2028,7 +2032,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-integration/releases/tag/v{version}")
 		}
 	}
-	library("Spring Kafka", "3.3.0-SNAPSHOT") {
+	library("Spring Kafka", "3.3.0-M3") {
 		considerSnapshots()
 		group("org.springframework.kafka") {
 			modules = [
@@ -2066,7 +2070,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ldap/releases/tag/{version}")
 		}
 	}
-	library("Spring Pulsar", "1.2.0-SNAPSHOT") {
+	library("Spring Pulsar", "1.2.0-M2") {
 		considerSnapshots()
 		group("org.springframework.pulsar") {
 			imports = [
@@ -2100,7 +2104,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-restdocs/releases/tag/v{version}")
 		}
 	}
-	library("Spring Retry", "2.0.8") {
+	library("Spring Retry", "2.0.9") {
 		considerSnapshots()
 		group("org.springframework.retry") {
 			modules = [
@@ -2112,7 +2116,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-retry/releases/tag/v{version}")
 		}
 	}
-	library("Spring Security", "6.4.0-SNAPSHOT") {
+	library("Spring Security", "6.4.0-M4") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			imports = [
@@ -2129,7 +2133,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-security/releases/tag/{version}")
 		}
 	}
-	library("Spring Session", "3.4.0-SNAPSHOT") {
+	library("Spring Session", "3.4.0-M2") {
 		considerSnapshots()
 		prohibit {
 			startsWith(["Apple-", "Bean-", "Corn-", "Dragonfruit-"])
