@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2024 the original author or authors.
+ * Copyright 2012-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package org.springframework.boot.build.repository;
+package org.springframework.boot.autoconfigure.hazelcast;
+
+import com.hazelcast.client.config.ClientConfig;
+
+import org.springframework.boot.autoconfigure.service.connection.ConnectionDetails;
 
 /**
- * Utility to build repository URLs.
+ * Details required to establish a client connection to a Hazelcast instance.
  *
- * @author Phillip Webb
+ * @author Dmytro Nosan
+ * @since 3.4.0
  */
-final class RepositoryUrl {
+public interface HazelcastConnectionDetails extends ConnectionDetails {
 
-	private RepositoryUrl() {
-	}
-
-	static String openSource(String path) {
-		return "https://repo.spring.io" + path;
-	}
-
-	static String commercial(String path) {
-		return "https://usw1.packages.broadcom.com" + path;
-	}
+	/**
+	 * The {@link ClientConfig} for Hazelcast client.
+	 * @return the client config
+	 */
+	ClientConfig getClientConfig();
 
 }
