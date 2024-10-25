@@ -102,7 +102,11 @@ public class ServerProperties {
 	private String serverHeader;
 
 	/**
-	 * Maximum size of the HTTP request header.
+	 * Maximum size of the HTTP request header. Refer to the documentation for your chosen
+	 * embedded server for details of exactly how this limit is applied. For example,
+	 * Netty applies the limit separately to each individual header in the request whereas
+	 * Tomcat applies the limit to the combined size of the request line and all of the
+	 * header names and values in the request.
 	 */
 	private DataSize maxHttpRequestHeaderSize = DataSize.ofKilobytes(8);
 
@@ -490,13 +494,6 @@ public class ServerProperties {
 		private Duration connectionTimeout;
 
 		/**
-		 * Whether to reject requests with illegal header names or values.
-		 * @deprecated since 2.7.12 for removal in 3.3.0
-		 */
-		@Deprecated(since = "2.7.12", forRemoval = true) // Remove in 3.3
-		private boolean rejectIllegalHeader = true;
-
-		/**
 		 * Static resource configuration.
 		 */
 		private final Resource resource = new Resource();
@@ -650,17 +647,6 @@ public class ServerProperties {
 
 		public void setConnectionTimeout(Duration connectionTimeout) {
 			this.connectionTimeout = connectionTimeout;
-		}
-
-		@Deprecated(since = "3.2.0", forRemoval = true)
-		@DeprecatedConfigurationProperty(reason = "The setting has been deprecated in Tomcat", since = "3.2.0")
-		public boolean isRejectIllegalHeader() {
-			return this.rejectIllegalHeader;
-		}
-
-		@Deprecated(since = "3.2.0", forRemoval = true)
-		public void setRejectIllegalHeader(boolean rejectIllegalHeader) {
-			this.rejectIllegalHeader = rejectIllegalHeader;
 		}
 
 		public Resource getResource() {
@@ -937,7 +923,8 @@ public class ServerProperties {
 			private int minSpare = 10;
 
 			/**
-			 * Maximum capacity of the thread pool's backing queue.
+			 * Maximum capacity of the thread pool's backing queue. This setting only has
+			 * an effect if the value is greater than 0.
 			 */
 			private int maxQueueCapacity = 2147483647;
 
