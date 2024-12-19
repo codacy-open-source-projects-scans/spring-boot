@@ -64,9 +64,11 @@ public class DockerApi {
 
 	private static final List<String> FORCE_PARAMS = Collections.unmodifiableList(Arrays.asList("force", "1"));
 
-	static final ApiVersion MINIMUM_API_VERSION = ApiVersion.of(1, 24);
+	static final ApiVersion API_VERSION = ApiVersion.of(1, 24);
 
-	static final ApiVersion MINIMUM_PLATFORM_API_VERSION = ApiVersion.of(1, 41);
+	static final ApiVersion PLATFORM_API_VERSION = ApiVersion.of(1, 41);
+
+	static final ApiVersion UNKNOWN_API_VERSION = ApiVersion.of(0, 0);
 
 	static final String API_VERSION_HEADER_NAME = "API-Version";
 
@@ -123,12 +125,17 @@ public class DockerApi {
 	}
 
 	private URI buildUrl(String path, Collection<?> params) {
-		return buildUrl(path, (params != null) ? params.toArray() : null);
+		return buildUrl(API_VERSION, path, (params != null) ? params.toArray() : null);
 	}
 
 	private URI buildUrl(String path, Object... params) {
+		return buildUrl(API_VERSION, path, params);
+	}
+
+	private URI buildUrl(ApiVersion apiVersion, String path, Object... params) {
+		verifyApiVersion(apiVersion);
 		try {
-			URIBuilder builder = new URIBuilder("/v" + getApiVersion() + path);
+			URIBuilder builder = new URIBuilder("/v" + apiVersion + path);
 			int param = 0;
 			while (param < params.length) {
 				builder.addParameter(Objects.toString(params[param++]), Objects.toString(params[param++]));
@@ -140,10 +147,11 @@ public class DockerApi {
 		}
 	}
 
-	private void verifyApiVersionForPlatform(ImagePlatform platform) {
-		Assert.isTrue(platform == null || getApiVersion().supports(MINIMUM_PLATFORM_API_VERSION),
-				() -> "Docker API version must be at least " + MINIMUM_PLATFORM_API_VERSION
-						+ " to support the 'imagePlatform' option, but current API version is " + getApiVersion());
+	private void verifyApiVersion(ApiVersion minimumVersion) {
+		ApiVersion actualVersion = getApiVersion();
+		Assert.state(actualVersion.equals(UNKNOWN_API_VERSION) || actualVersion.supports(minimumVersion),
+				() -> "Docker API version must be at least " + minimumVersion
+						+ " to support this feature, but current API version is " + actualVersion);
 	}
 
 	private ApiVersion getApiVersion() {
@@ -213,9 +221,8 @@ public class DockerApi {
 				UpdateListener<PullImageUpdateEvent> listener, String registryAuth) throws IOException {
 			Assert.notNull(reference, "Reference must not be null");
 			Assert.notNull(listener, "Listener must not be null");
-			verifyApiVersionForPlatform(platform);
 			URI createUri = (platform != null)
-					? buildUrl("/images/create", "fromImage", reference, "platform", platform)
+					? buildUrl(PLATFORM_API_VERSION, "/images/create", "fromImage", reference, "platform", platform)
 					: buildUrl("/images/create", "fromImage", reference);
 			DigestCaptureUpdateListener digestCapture = new DigestCaptureUpdateListener();
 			listener.onStart();
@@ -226,7 +233,7 @@ public class DockerApi {
 						listener.onUpdate(event);
 					});
 				}
-				return inspect(reference);
+				return inspect((platform != null) ? PLATFORM_API_VERSION : API_VERSION, reference);
 			}
 			finally {
 				listener.onFinish();
@@ -270,7 +277,7 @@ public class DockerApi {
 			Assert.notNull(archive, "Archive must not be null");
 			Assert.notNull(listener, "Listener must not be null");
 			URI loadUri = buildUrl("/images/load");
-			StreamCaptureUpdateListener streamListener = new StreamCaptureUpdateListener();
+			LoadImageUpdateListener streamListener = new LoadImageUpdateListener(archive);
 			listener.onStart();
 			try {
 				try (Response response = http().post(loadUri, "application/x-tar", archive::writeTo)) {
@@ -279,9 +286,7 @@ public class DockerApi {
 						listener.onUpdate(event);
 					});
 				}
-				Assert.state(StringUtils.hasText(streamListener.getCapturedStream()),
-						"Invalid response received when loading image "
-								+ ((archive.getTag() != null) ? "\"" + archive.getTag() + "\"" : ""));
+				streamListener.assertValidResponseReceived();
 			}
 			finally {
 				listener.onFinish();
@@ -355,8 +360,12 @@ public class DockerApi {
 		 * @throws IOException on IO error
 		 */
 		public Image inspect(ImageReference reference) throws IOException {
+			return inspect(API_VERSION, reference);
+		}
+
+		private Image inspect(ApiVersion apiVersion, ImageReference reference) throws IOException {
 			Assert.notNull(reference, "Reference must not be null");
-			URI imageUri = buildUrl("/images/" + reference + "/json");
+			URI imageUri = buildUrl(apiVersion, "/images/" + reference + "/json");
 			try (Response response = http().get(imageUri)) {
 				return Image.of(response.getContent());
 			}
@@ -403,8 +412,8 @@ public class DockerApi {
 		}
 
 		private ContainerReference createContainer(ContainerConfig config, ImagePlatform platform) throws IOException {
-			verifyApiVersionForPlatform(platform);
-			URI createUri = (platform != null) ? buildUrl("/containers/create", "platform", platform)
+			URI createUri = (platform != null)
+					? buildUrl(PLATFORM_API_VERSION, "/containers/create", "platform", platform)
 					: buildUrl("/containers/create");
 			try (Response response = http().post(createUri, "application/json", config::writeTo)) {
 				return ContainerReference
@@ -526,7 +535,7 @@ public class DockerApi {
 				catch (Exception ex) {
 					// fall through to return default value
 				}
-				return MINIMUM_API_VERSION;
+				return UNKNOWN_API_VERSION;
 			}
 			catch (URISyntaxException ex) {
 				throw new IllegalStateException(ex);
@@ -557,19 +566,33 @@ public class DockerApi {
 	}
 
 	/**
-	 * {@link UpdateListener} used to ensure an image load response stream.
+	 * {@link UpdateListener} for an image load response stream.
 	 */
-	private static final class StreamCaptureUpdateListener implements UpdateListener<LoadImageUpdateEvent> {
+	private static final class LoadImageUpdateListener implements UpdateListener<LoadImageUpdateEvent> {
+
+		private final ImageArchive archive;
 
 		private String stream;
 
+		private LoadImageUpdateListener(ImageArchive archive) {
+			this.archive = archive;
+		}
+
 		@Override
 		public void onUpdate(LoadImageUpdateEvent event) {
+			Assert.state(event.getErrorDetail() == null,
+					() -> "Error response received when loading image" + image() + ": " + event.getErrorDetail());
 			this.stream = event.getStream();
 		}
 
-		String getCapturedStream() {
-			return this.stream;
+		private String image() {
+			ImageReference tag = this.archive.getTag();
+			return (tag != null) ? " \"" + tag + "\"" : "";
+		}
+
+		private void assertValidResponseReceived() {
+			Assert.state(StringUtils.hasText(this.stream),
+					() -> "Invalid response received when loading image" + image());
 		}
 
 	}

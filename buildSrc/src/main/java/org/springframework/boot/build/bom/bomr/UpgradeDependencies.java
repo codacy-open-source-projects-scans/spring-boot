@@ -35,6 +35,7 @@ import javax.inject.Inject;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.InvalidUserDataException;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.provider.ListProperty;
@@ -66,6 +67,10 @@ public abstract class UpgradeDependencies extends DefaultTask {
 
 	private final boolean movingToSnapshots;
 
+	private final UpgradeApplicator upgradeApplicator;
+
+	private final RepositoryHandler repositories;
+
 	@Inject
 	public UpgradeDependencies(BomExtension bom) {
 		this(bom, false);
@@ -75,6 +80,9 @@ public abstract class UpgradeDependencies extends DefaultTask {
 		this.bom = bom;
 		getThreads().convention(2);
 		this.movingToSnapshots = movingToSnapshots;
+		this.upgradeApplicator = new UpgradeApplicator(getProject().getBuildFile().toPath(),
+				new File(getProject().getRootProject().getProjectDir(), "gradle.properties").toPath());
+		this.repositories = getProject().getRepositories();
 	}
 
 	@Input
@@ -106,19 +114,17 @@ public abstract class UpgradeDependencies extends DefaultTask {
 
 	private void applyUpgrades(GitHubRepository repository, List<String> issueLabels, Milestone milestone,
 			List<Upgrade> upgrades) {
-		Path buildFile = getProject().getBuildFile().toPath();
-		Path gradleProperties = new File(getProject().getRootProject().getProjectDir(), "gradle.properties").toPath();
-		UpgradeApplicator upgradeApplicator = new UpgradeApplicator(buildFile, gradleProperties);
 		List<Issue> existingUpgradeIssues = repository.findIssues(issueLabels, milestone);
 		System.out.println("Applying upgrades...");
 		System.out.println("");
 		for (Upgrade upgrade : upgrades) {
-			System.out.println(upgrade.getLibrary().getName() + " " + upgrade.getVersion());
-			String title = issueTitle(upgrade);
+			System.out.println(upgrade.to().getNameAndVersion());
 			Issue existingUpgradeIssue = findExistingUpgradeIssue(existingUpgradeIssues, upgrade);
 			try {
-				Path modified = upgradeApplicator.apply(upgrade);
-				int issueNumber = getOrOpenUpgradeIssue(repository, issueLabels, milestone, title,
+				Path modified = this.upgradeApplicator.apply(upgrade);
+				String title = issueTitle(upgrade);
+				String body = issueBody(upgrade, existingUpgradeIssue);
+				int issueNumber = getOrOpenUpgradeIssue(repository, issueLabels, milestone, title, body,
 						existingUpgradeIssue);
 				if (existingUpgradeIssue != null && existingUpgradeIssue.getState() == Issue.State.CLOSED) {
 					existingUpgradeIssue.label(Arrays.asList("type: task", "status: superseded"));
@@ -146,11 +152,10 @@ public abstract class UpgradeDependencies extends DefaultTask {
 	}
 
 	private int getOrOpenUpgradeIssue(GitHubRepository repository, List<String> issueLabels, Milestone milestone,
-			String title, Issue existingUpgradeIssue) {
+			String title, String body, Issue existingUpgradeIssue) {
 		if (existingUpgradeIssue != null && existingUpgradeIssue.getState() == Issue.State.OPEN) {
 			return existingUpgradeIssue.getNumber();
 		}
-		String body = (existingUpgradeIssue != null) ? "Supersedes #" + existingUpgradeIssue.getNumber() : "";
 		return repository.openIssue(title, body, issueLabels, milestone);
 	}
 
@@ -202,7 +207,7 @@ public abstract class UpgradeDependencies extends DefaultTask {
 	}
 
 	private Issue findExistingUpgradeIssue(List<Issue> existingUpgradeIssues, Upgrade upgrade) {
-		String toMatch = "Upgrade to " + upgrade.getLibrary().getName();
+		String toMatch = "Upgrade to " + upgrade.toRelease().getName();
 		for (Issue existingUpgradeIssue : existingUpgradeIssues) {
 			String title = existingUpgradeIssue.getTitle();
 			int lastSpaceIndex = title.lastIndexOf(' ');
@@ -236,7 +241,7 @@ public abstract class UpgradeDependencies extends DefaultTask {
 
 	private List<MavenArtifactRepository> asRepositories(List<String> repositoryNames) {
 		return repositoryNames.stream()
-			.map(getProject().getRepositories()::getByName)
+			.map(this.repositories::getByName)
 			.map(MavenArtifactRepository.class::cast)
 			.toList();
 	}
@@ -280,8 +285,21 @@ public abstract class UpgradeDependencies extends DefaultTask {
 		return libraryPredicate.test(library.getName());
 	}
 
-	protected abstract String issueTitle(Upgrade upgrade);
-
 	protected abstract String commitMessage(Upgrade upgrade, int issueNumber);
+
+	protected String issueTitle(Upgrade upgrade) {
+		return "Upgrade to " + upgrade.toRelease().getNameAndVersion();
+	}
+
+	protected String issueBody(Upgrade upgrade, Issue existingUpgrade) {
+		String description = upgrade.toRelease().getNameAndVersion();
+		String releaseNotesLink = upgrade.toRelease().getLinkUrl("releaseNotes");
+		String body = (releaseNotesLink != null) ? "Upgrade to [%s](%s).".formatted(description, releaseNotesLink)
+				: "Upgrade to %s.".formatted(description);
+		if (existingUpgrade != null) {
+			body += "\n\nSupersedes #" + existingUpgrade.getNumber();
+		}
+		return body;
+	}
 
 }

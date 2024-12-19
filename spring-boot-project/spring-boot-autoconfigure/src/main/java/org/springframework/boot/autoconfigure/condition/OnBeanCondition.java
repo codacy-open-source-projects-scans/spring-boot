@@ -36,6 +36,7 @@ import java.util.function.Predicate;
 
 import org.springframework.aop.scope.ScopedProxyUtils;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.HierarchicalBeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -201,16 +202,10 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 	}
 
 	protected final MatchResult getMatchingBeans(Spec<?> spec) {
+		ConfigurableListableBeanFactory beanFactory = getSearchBeanFactory(spec);
 		ClassLoader classLoader = spec.getContext().getClassLoader();
-		ConfigurableListableBeanFactory beanFactory = spec.getContext().getBeanFactory();
 		boolean considerHierarchy = spec.getStrategy() != SearchStrategy.CURRENT;
 		Set<Class<?>> parameterizedContainers = spec.getParameterizedContainers();
-		if (spec.getStrategy() == SearchStrategy.ANCESTORS) {
-			BeanFactory parent = beanFactory.getParentBeanFactory();
-			Assert.isInstanceOf(ConfigurableListableBeanFactory.class, parent,
-					"Unable to use SearchStrategy.ANCESTORS");
-			beanFactory = (ConfigurableListableBeanFactory) parent;
-		}
 		MatchResult result = new MatchResult();
 		Set<String> beansIgnoredByType = getNamesOfBeansIgnoredByType(classLoader, beanFactory, considerHierarchy,
 				spec.getIgnoredTypes(), parameterizedContainers);
@@ -218,8 +213,8 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 			Map<String, BeanDefinition> typeMatchedDefinitions = getBeanDefinitionsForType(classLoader,
 					considerHierarchy, beanFactory, type, parameterizedContainers);
 			Set<String> typeMatchedNames = matchedNamesFrom(typeMatchedDefinitions,
-					(name, definition) -> isCandidate(name, definition, beansIgnoredByType)
-							&& !ScopedProxyUtils.isScopedTarget(name));
+					(name, definition) -> !ScopedProxyUtils.isScopedTarget(name)
+							&& isCandidate(beanFactory, name, definition, beansIgnoredByType));
 			if (typeMatchedNames.isEmpty()) {
 				result.recordUnmatchedType(type);
 			}
@@ -231,7 +226,7 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 			Map<String, BeanDefinition> annotationMatchedDefinitions = getBeanDefinitionsForAnnotation(classLoader,
 					beanFactory, annotation, considerHierarchy);
 			Set<String> annotationMatchedNames = matchedNamesFrom(annotationMatchedDefinitions,
-					(name, definition) -> isCandidate(name, definition, beansIgnoredByType));
+					(name, definition) -> isCandidate(beanFactory, name, definition, beansIgnoredByType));
 			if (annotationMatchedNames.isEmpty()) {
 				result.recordUnmatchedAnnotation(annotation);
 			}
@@ -251,6 +246,17 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 		return result;
 	}
 
+	private ConfigurableListableBeanFactory getSearchBeanFactory(Spec<?> spec) {
+		ConfigurableListableBeanFactory beanFactory = spec.getContext().getBeanFactory();
+		if (spec.getStrategy() == SearchStrategy.ANCESTORS) {
+			BeanFactory parent = beanFactory.getParentBeanFactory();
+			Assert.isInstanceOf(ConfigurableListableBeanFactory.class, parent,
+					"Unable to use SearchStrategy.ANCESTORS");
+			beanFactory = (ConfigurableListableBeanFactory) parent;
+		}
+		return beanFactory;
+	}
+
 	private Set<String> matchedNamesFrom(Map<String, BeanDefinition> namedDefinitions,
 			BiPredicate<String, BeanDefinition> filter) {
 		Set<String> matchedNames = new LinkedHashSet<>(namedDefinitions.size());
@@ -262,9 +268,25 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 		return matchedNames;
 	}
 
-	private boolean isCandidate(String name, BeanDefinition definition, Set<String> ignoredBeans) {
-		return (!ignoredBeans.contains(name))
-				&& (definition == null || (definition.isAutowireCandidate() && isDefaultCandidate(definition)));
+	private boolean isCandidate(ConfigurableListableBeanFactory beanFactory, String name, BeanDefinition definition,
+			Set<String> ignoredBeans) {
+		return (!ignoredBeans.contains(name)) && (definition == null
+				|| isAutowireCandidate(beanFactory, name, definition) && isDefaultCandidate(definition));
+	}
+
+	private boolean isAutowireCandidate(ConfigurableListableBeanFactory beanFactory, String name,
+			BeanDefinition definition) {
+		return definition.isAutowireCandidate() || isScopeTargetAutowireCandidate(beanFactory, name);
+	}
+
+	private boolean isScopeTargetAutowireCandidate(ConfigurableListableBeanFactory beanFactory, String name) {
+		try {
+			return ScopedProxyUtils.isScopedTarget(name)
+					&& beanFactory.getBeanDefinition(ScopedProxyUtils.getOriginalBeanName(name)).isAutowireCandidate();
+		}
+		catch (NoSuchBeanDefinitionException ex) {
+			return false;
+		}
 	}
 
 	private boolean isDefaultCandidate(BeanDefinition definition) {
@@ -496,18 +518,25 @@ class OnBeanCondition extends FilteringSpringBootCondition implements Configurat
 		}
 		for (String beanName : beanNames) {
 			if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
-				try {
-					result.put(beanName, clbf.getBeanDefinition(beanName));
-				}
-				catch (NoSuchBeanDefinitionException ex) {
-					result.put(beanName, null);
-				}
+				result.put(beanName, getBeanDefinition(beanName, clbf));
 			}
 			else {
 				result.put(beanName, null);
 			}
 		}
 		return result;
+	}
+
+	private static BeanDefinition getBeanDefinition(String beanName, ConfigurableListableBeanFactory beanFactory) {
+		try {
+			return beanFactory.getBeanDefinition(beanName);
+		}
+		catch (NoSuchBeanDefinitionException ex) {
+			if (BeanFactoryUtils.isFactoryDereference(beanName)) {
+				return getBeanDefinition(BeanFactoryUtils.transformedBeanName(beanName), beanFactory);
+			}
+		}
+		return null;
 	}
 
 	/**
