@@ -136,6 +136,9 @@ dependencies {
 	api(project(":module:spring-boot-jdbc")) {
 		transitive = false
 	}
+	api(project(":module:spring-boot-jersey")) {
+		transitive = false
+	}
 	api(project(":module:spring-boot-jetty")) {
 		transitive = false
 	}
@@ -173,6 +176,12 @@ dependencies {
 		transitive = false
 	}
 	api(project(":module:spring-boot-micrometer-tracing")) {
+		transitive = false
+	}
+	api(project(":module:spring-boot-micrometer-tracing-brave")) {
+		transitive = false
+	}
+	api(project(":module:spring-boot-micrometer-tracing-opentelemetry")) {
 		transitive = false
 	}
 	api(project(":module:spring-boot-mongodb")) {
