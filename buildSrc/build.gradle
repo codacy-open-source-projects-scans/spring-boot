@@ -22,18 +22,19 @@ plugins {
 	id "org.jetbrains.dokka" version "2.1.0"
 }
 
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_24)) {
+	throw new GradleException("This build requires Java 24 or newer to run, but you are currently using Java ${JavaVersion.current()}")
+}
+
 repositories {
 	mavenCentral()
+	spring.mavenRepositoriesFor("${springFrameworkVersion}")
 	gradlePluginPortal()
 }
 
 java {
 	sourceCompatibility = 17
 	targetCompatibility = 17
-}
-
-repositories {
-	spring.mavenRepositories("${springFrameworkVersion}".contains("-"))
 }
 
 checkstyle {
@@ -113,6 +114,10 @@ gradlePlugin {
 		bomPlugin {
 			id = "org.springframework.boot.bom"
 			implementationClass = "org.springframework.boot.build.bom.BomPlugin"
+		}
+		configurationMetadataPlugin {
+			id = "org.springframework.boot.configuration-metadata"
+			implementationClass = "org.springframework.boot.build.context.properties.ConfigurationMetadataPlugin"
 		}
 		configurationPropertiesPlugin {
 			id = "org.springframework.boot.configuration-properties"

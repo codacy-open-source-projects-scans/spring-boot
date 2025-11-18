@@ -29,6 +29,11 @@ Observability support relies on the https://github.com/micrometer-metrics/contex
 By default, javadoc:java.lang.ThreadLocal[] values are not automatically reinstated in reactive operators.
 This behavior is controlled with the configprop:spring.reactor.context-propagation[] property, which can be set to `auto` to enable automatic propagation.
 
+If you're working with javadoc:org.springframework.scheduling.annotation.Async[format=annotation] methods or use an javadoc:org.springframework.core.task.AsyncTaskExecutor[], you have to register the javadoc:org.springframework.core.task.support.ContextPropagatingTaskDecorator[] on the executor, otherwise the observability context is lost when switching threads.
+This can be done using this configuration:
+
+include-code::ContextPropagationConfiguration[]
+
 For more details about observations please see the {url-micrometer-docs}/observation[Micrometer Observation documentation].
 
 
@@ -137,7 +142,17 @@ Micrometer also supports the following environment variables to configure the me
 * https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_headers[`OTEL_EXPORTER_OTLP_HEADERS`]
 * https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#otel_exporter_otlp_metrics_headers[`OTEL_EXPORTER_OTLP_METRICS_HEADERS`]
 
-Logging and tracing use the OpenTelemetry SDK directly, so all environment variables https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/[supported by OpenTelemetry] also work.
+Other environment variables as described in https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/[the OpenTelemetry documentation] are not supported.
+
+If you want all environment variables specified by OpenTelemetry's SDK to be effective, you have to supply your own `OpenTelemetry` bean.
+
+WARNING: Doing this will switch off Spring Boot's OpenTelemetry auto-configuration and may break the built-in observability functionality.
+
+First, add a dependency to `io.opentelemetry:opentelemetry-sdk-extension-autoconfigure` to get https://opentelemetry.io/docs/languages/java/configuration/#zero-code-sdk-autoconfigure[OpenTelemetry's zero-code SDK autoconfigure module], then add this configuration:
+
+include-code::AutoConfiguredOpenTelemetrySdkConfiguration[]
+
+
 
 [[actuator.observability.opentelemetry.logging]]
 === Logging
