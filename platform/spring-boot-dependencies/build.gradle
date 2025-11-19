@@ -188,11 +188,7 @@ bom {
 			releaseNotes("https://github.com/ben-manes/caffeine/releases/tag/v{version}")
 		}
 	}
-	library("Cassandra Driver", "4.19.0") {
-		prohibit {
-			versionRange "[4.19.1]"
-			because "it contains a regression, see https://github.com/spring-projects/spring-data-cassandra/issues/1617"
-		}
+	library("Cassandra Driver", "4.19.2") {
 		group("org.apache.cassandra") {
 			bom("java-driver-bom") {
 				permit("com.datastax.oss:native-protocol")
@@ -1164,7 +1160,7 @@ bom {
 			releaseNotes("https://junit.org/junit5/docs/{version}/release-notes")
 		}
 	}
-	library("Kafka", "4.1.0") {
+	library("Kafka", "4.1.1") {
 		group("org.apache.kafka") {
 			modules = [
 				"connect",
@@ -1181,7 +1177,6 @@ bom {
 				"kafka-clients" {
 					classifier = "test"
 				},
-				"kafka-log4j-appender",
 				"kafka-metadata",
 				"kafka-raft",
 				"kafka-server",
@@ -2388,7 +2383,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-amqp/releases/tag/v{version}")
 		}
 	}
-	library("Spring Batch", "6.0.0-SNAPSHOT") {
+	library("Spring Batch", "6.0.0") {
 		considerSnapshots()
 		group("org.springframework.batch") {
 			bom("spring-batch-bom")
@@ -2536,7 +2531,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-pulsar/releases/tag/v{version}")
 		}
 	}
-	library("Spring RESTDocs", "4.0.0-SNAPSHOT") {
+	library("Spring RESTDocs", "4.0.0") {
 		considerSnapshots()
 		group("org.springframework.restdocs") {
 			bom("spring-restdocs-bom")
