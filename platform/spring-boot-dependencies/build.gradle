@@ -2433,7 +2433,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-framework/releases/tag/v{version}")
 		}
 	}
-	library("Spring GraphQL", "2.0.0-SNAPSHOT") {
+	library("Spring GraphQL", "2.0.0") {
 		considerSnapshots()
 		group("org.springframework.graphql") {
 			modules = [
@@ -2468,7 +2468,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-hateoas/releases/tag/{version}")
 		}
 	}
-	library("Spring Integration", "7.0.0-SNAPSHOT") {
+	library("Spring Integration", "7.0.0") {
 		considerSnapshots()
 		group("org.springframework.integration") {
 			bom("spring-integration-bom")
@@ -2589,7 +2589,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-session/releases/tag/{version}")
 		}
 	}
-	library("Spring WS", "5.0.0-SNAPSHOT") {
+	library("Spring WS", "5.0.0") {
 		considerSnapshots()
 		group("org.springframework.ws") {
 			bom("spring-ws-bom")
