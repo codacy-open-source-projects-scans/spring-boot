@@ -197,9 +197,13 @@ include-code::MyRandomPortWebTestClientTests[]
 
 TIP: javadoc:org.springframework.test.web.reactive.server.WebTestClient[] can also used with a xref:testing/spring-boot-applications.adoc#testing.spring-boot-applications.with-mock-environment[mock environment], removing the need for a running server, by annotating your test class with javadoc:org.springframework.boot.webflux.test.autoconfigure.AutoConfigureWebTestClient[format=annotation] from `spring-boot-webflux-test`.
 
-The `spring-boot-resttestclient` modules also provides a javadoc:org.springframework.boot.resttestclient.TestRestTemplate[] facility:
+The `spring-boot-resttestclient` module also provides a javadoc:org.springframework.boot.resttestclient.TestRestTemplate[] facility:
 
 include-code::MyRandomPortTestRestTemplateTests[]
+
+To use `TestRestTemplate` a dependency on `spring-boot-restclient` is also required.
+Take care when adding this dependency as it will enable auto-configuration for `RestClient.Builder`.
+If your main code uses `RestClient.Builder`, declare the `spring-boot-restclient` dependency so that it is on your application's main classpath and not only on its test classpath.
 
 
 
@@ -347,6 +351,8 @@ Often, javadoc:org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest[for
 javadoc:org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest[format=annotation] also auto-configures javadoc:org.springframework.test.web.servlet.MockMvc[].
 Mock MVC offers a powerful way to quickly test MVC controllers without needing to start a full HTTP server.
 If AssertJ is available, the AssertJ support provided by javadoc:org.springframework.test.web.servlet.assertj.MockMvcTester[] is auto-configured as well.
+If you'd like to use javadoc:org.springframework.test.web.servlet.client.RestTestClient[] in your tests, annotate your test class with javadoc:org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient[format=annotation].
+A `RestTestClient` that uses the Mock MVC infrastructure will then be auto-configured.
 
 TIP: You can also auto-configure javadoc:org.springframework.test.web.servlet.MockMvc[] and javadoc:org.springframework.test.web.servlet.assertj.MockMvcTester[] in a non-`@WebMvcTest` (such as javadoc:org.springframework.boot.test.context.SpringBootTest[format=annotation]) by annotating it with javadoc:org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc[format=annotation].
 The following example uses javadoc:org.springframework.test.web.servlet.assertj.MockMvcTester[]:
