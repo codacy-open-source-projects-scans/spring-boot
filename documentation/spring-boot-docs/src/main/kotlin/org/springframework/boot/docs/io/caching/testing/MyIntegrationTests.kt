@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,20 +14,15 @@
  * limitations under the License.
  */
 
-plugins {
-	id "java"
-}
+package org.springframework.boot.docs.io.caching.testing
 
-description = "Spring Boot web application type smoke test"
+import org.springframework.boot.cache.test.autoconfigure.AutoConfigureCache
+import org.springframework.boot.test.context.SpringBootTest
 
-dependencies {
-	implementation(project(":starter:spring-boot-starter-webmvc"))
-	implementation(project(":starter:spring-boot-starter-webflux"))
+@SpringBootTest
+@AutoConfigureCache
+class MyIntegrationTests {
 
-	testImplementation(project(":starter:spring-boot-starter-test"))
-	testImplementation(project(":test-support:spring-boot-test-support"))
-}
+	// Tests use a no-op cache manager
 
-tasks.named("compileTestJava") {
-	options.nullability.checking = "tests"
 }
