@@ -72,7 +72,7 @@ bom {
 			releaseNotes("https://activemq.apache.org/components/artemis/download/release-notes-{version}")
 		}
 	}
-	library("AspectJ", "1.9.25") {
+	library("AspectJ", "1.9.25.1") {
 		group("org.aspectj") {
 			modules = [
 				"aspectjrt",
@@ -1076,7 +1076,7 @@ bom {
 			releaseNotes("https://github.com/jOOQ/jOOQ/releases/tag/version-{version}")
 		}
 	}
-	library("Json Path", "2.9.0") {
+	library("Json Path", "2.10.0") {
 		group("com.jayway.jsonpath") {
 			modules = [
 				"json-path",
@@ -1275,7 +1275,7 @@ bom {
 			releaseNotes("https://github.com/liquibase/liquibase/releases/tag/v{version}")
 		}
 	}
-	library("Log4j2", "2.25.2") {
+	library("Log4j2", "2.25.3") {
 		prohibit {
 			contains "-alpha"
 			contains "-beta"
@@ -1315,7 +1315,7 @@ bom {
 			javadoc("https://projectlombok.org/api")
 		}
 	}
-	library("MariaDB", "3.5.6") {
+	library("MariaDB", "3.5.7") {
 		group("org.mariadb.jdbc") {
 			modules = [
 				"mariadb-java-client"
@@ -1671,11 +1671,7 @@ bom {
 			releaseNotes("https://github.com/neo4j/neo4j-java-driver/releases/tag/{version}")
 		}
 	}
-	library("Netty", "4.2.7.Final") {
-		prohibit {
-			versionRange "[4.2.8.Final]"
-			because "it contains a regression https://github.com/netty/netty/issues/16020"
-		}
+	library("Netty", "4.2.9.Final") {
 		prohibit {
 			contains ".Alpha"
 			contains ".Beta"
@@ -1756,7 +1752,7 @@ bom {
 			releaseNotes("https://github.com/oracle/oracle-r2dbc/releases/tag/{version}")
 		}
 	}
-	library("Pooled JMS", "3.1.7") {
+	library("Pooled JMS", "3.1.8") {
 		group("org.messaginghub") {
 			modules = [
 				"pooled-jms"
@@ -2372,7 +2368,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "4.0.1-SNAPSHOT") {
+	library("Spring AMQP", "4.0.1") {
 		considerSnapshots()
 		group("org.springframework.amqp") {
 			bom("spring-amqp-bom")
@@ -2432,7 +2428,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-framework/releases/tag/v{version}")
 		}
 	}
-	library("Spring GraphQL", "2.0.1-SNAPSHOT") {
+	library("Spring GraphQL", "2.0.1") {
 		considerSnapshots()
 		group("org.springframework.graphql") {
 			modules = [
@@ -2467,7 +2463,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-hateoas/releases/tag/{version}")
 		}
 	}
-	library("Spring Integration", "7.0.1-SNAPSHOT") {
+	library("Spring Integration", "7.0.1") {
 		considerSnapshots()
 		group("org.springframework.integration") {
 			bom("spring-integration-bom")
@@ -2482,7 +2478,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-integration/releases/tag/v{version}")
 		}
 	}
-	library("Spring Kafka", "4.0.1-SNAPSHOT") {
+	library("Spring Kafka", "4.0.1") {
 		considerSnapshots()
 		group("org.springframework.kafka") {
 			modules = [
@@ -2520,7 +2516,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ldap/releases/tag/{version}")
 		}
 	}
-	library("Spring Pulsar", "2.0.1-SNAPSHOT") {
+	library("Spring Pulsar", "2.0.1") {
 		considerSnapshots()
 		group("org.springframework.pulsar") {
 			bom("spring-pulsar-bom")
@@ -2565,7 +2561,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-security/releases/tag/{version}")
 		}
 	}
-	library("Spring Session", "4.0.1-SNAPSHOT") {
+	library("Spring Session", "4.0.1") {
 		considerSnapshots()
 		prohibit {
 			startsWith(["Apple-", "Bean-", "Corn-", "Dragonfruit-"])
@@ -2614,7 +2610,7 @@ bom {
 			releaseNotes("https://github.com/xerial/sqlite-jdbc/releases/tag/{version}")
 		}
 	}
-	library("Testcontainers", "2.0.2") {
+	library("Testcontainers", "2.0.3") {
 		group("org.testcontainers") {
 			bom("testcontainers-bom")
 		}
