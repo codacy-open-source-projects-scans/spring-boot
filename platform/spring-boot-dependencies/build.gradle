@@ -23,7 +23,7 @@ description = "Spring Boot Dependencies"
 
 bom {
 	upgrade {
-		policy = "same-minor-version"
+		policy = "same-major-version"
 		gitHub {
 			issueLabels = ["type: dependency-upgrade"]
 		}
@@ -376,7 +376,7 @@ bom {
 			javadoc("elasticsearch-java", version -> "https://javadoc.io/doc/co.elastic.clients/elasticsearch-java/%s/index.html".formatted(version), "co.elastic.clients.elasticsearch", "co.elastic.clients.transport")
 		}
 	}
-	library("Flyway", "11.14.1") {
+	library("Flyway", "11.19.1") {
 		group("org.flywaydb") {
 			modules = [
 				"flyway-commandline",
@@ -2189,8 +2189,8 @@ bom {
 				"spring-boot-starter-jsonb-test",
 				"spring-boot-starter-kafka",
 				"spring-boot-starter-kafka-test",
-				"spring-boot-starter-kotlin-serialization-json",
-				"spring-boot-starter-kotlin-serialization-json-test",
+				"spring-boot-starter-kotlinx-serialization-json",
+				"spring-boot-starter-kotlinx-serialization-json-test",
 				"spring-boot-starter-ldap",
 				"spring-boot-starter-ldap-test",
 				"spring-boot-starter-liquibase",
@@ -2383,7 +2383,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-amqp/releases/tag/v{version}")
 		}
 	}
-	library("Spring Batch", "6.0.1-SNAPSHOT") {
+	library("Spring Batch", "6.0.1") {
 		considerSnapshots()
 		group("org.springframework.batch") {
 			bom("spring-batch-bom")

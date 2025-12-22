@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-plugins {
-	id "org.springframework.boot.starter"
-}
+package org.springframework.boot.build.architecture.assertj.noCheckReturnValue;
 
-description = "Starter for using Kotlin Serialization"
+import org.assertj.core.api.AbstractAssert;
 
-dependencies {
-	api(project(":starter:spring-boot-starter"))
+public class NoCheckReturnValue extends AbstractAssert<NoCheckReturnValue, Object> {
 
-	api(project(":module:spring-boot-kotlinx-serialization-json"))
+	NoCheckReturnValue() {
+		super(null, NoCheckReturnValue.class);
+	}
+
+	public Object notReturningSelf() {
+		return new Object();
+	}
+
 }
