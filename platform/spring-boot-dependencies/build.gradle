@@ -1231,7 +1231,7 @@ bom {
 			releaseNotes("https://github.com/Kotlin/kotlinx.coroutines/releases/tag/{version}")
 		}
 	}
-	library("Kotlin Serialization", "1.9.0") {
+	library("Kotlin Serialization", "1.10.0") {
 		group("org.jetbrains.kotlinx") {
 			bom("kotlinx-serialization-bom")
 		}
@@ -2278,6 +2278,7 @@ bom {
 				"spring-boot-transaction",
 				"spring-boot-validation",
 				"spring-boot-web-server",
+				"spring-boot-web-server-test",
 				"spring-boot-webclient",
 				"spring-boot-webclient-test",
 				"spring-boot-webflux",
@@ -2391,7 +2392,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-amqp/releases/tag/v{version}")
 		}
 	}
-	library("Spring Batch", "6.0.2-SNAPSHOT") {
+	library("Spring Batch", "6.0.2") {
 		considerSnapshots()
 		group("org.springframework.batch") {
 			bom("spring-batch-bom")
