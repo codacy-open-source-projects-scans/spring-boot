@@ -65,7 +65,7 @@ bom {
 			releaseNotes("https://github.com/eclipse-ee4j/angus-mail/releases/tag/{version}")
 		}
 	}
-	library("Artemis", "2.51.0") {
+	library("Artemis", "2.52.0") {
 		group("org.apache.artemis") {
 			bom("artemis-bom") {
 				permit("org.apache.activemq:artemis-amqp-protocol")
@@ -186,7 +186,7 @@ bom {
 			releaseNotes("https://github.com/mojohaus/build-helper-maven-plugin/releases/tag/{version}")
 		}
 	}
-	library("Byte Buddy", "1.18.5") {
+	library("Byte Buddy", "1.18.7") {
 		group("net.bytebuddy") {
 			modules = [
 				"byte-buddy",
@@ -419,7 +419,7 @@ bom {
 			javadoc("elasticsearch-java", version -> "https://javadoc.io/doc/co.elastic.clients/elasticsearch-java/%s/index.html".formatted(version), "co.elastic.clients.elasticsearch", "co.elastic.clients.transport")
 		}
 	}
-	library("Flyway", "12.0.1") {
+	library("Flyway", "12.0.3") {
 		group("org.flywaydb") {
 			modules = [
 				"flyway-command-test-connection",
@@ -605,7 +605,7 @@ bom {
 			releaseNotes("https://github.com/hazelcast/hazelcast/releases/tag/v{version}")
 		}
 	}
-	library("Hibernate", "7.2.4.Final") {
+	library("Hibernate", "7.2.6.Final") {
 		group("org.hibernate.orm") {
 			modules = [
 				"hibernate-agroal",
@@ -714,7 +714,7 @@ bom {
 			]
 		}
 	}
-	library("HttpCore5", "5.4.1") {
+	library("HttpCore5", "5.4.2") {
 		group("org.apache.httpcomponents.core5") {
 			modules = [
 				"httpcore5",
@@ -723,7 +723,7 @@ bom {
 			]
 		}
 	}
-	library("Infinispan", "15.2.6.Final") {
+	library("Infinispan", "16.1.0") {
 		group("org.infinispan") {
 			bom("infinispan-bom")
 		}
@@ -968,7 +968,7 @@ bom {
 			releaseNotes("https://github.com/jakartaee/saaj-api/releases/tag/{version}")
 		}
 	}
-	library("Jakarta XML WS", "4.0.2") {
+	library("Jakarta XML WS", "4.0.3") {
 		group("jakarta.xml.ws") {
 			modules = [
 				"jakarta.xml.ws-api"
@@ -1084,7 +1084,7 @@ bom {
 			]
 		}
 	}
-	library("Jetty", "12.1.6") {
+	library("Jetty", "12.1.7") {
 		prohibit {
 			contains ".alpha"
 			because "we don't want alpha dependencies"
@@ -1305,7 +1305,7 @@ bom {
 			releaseNotes("https://github.com/redis/lettuce/releases/tag/{version}")
 		}
 	}
-	library("Liquibase", "5.0.1") {
+	library("Liquibase", "5.0.2") {
 		group("org.liquibase") {
 			modules = [
 				"liquibase-cdi",
@@ -1455,7 +1455,7 @@ bom {
 			releaseNotes("https://github.com/apache/maven-enforcer/releases/tag/enforcer-{version}")
 		}
 	}
-	library("Maven Failsafe Plugin", "3.5.4") {
+	library("Maven Failsafe Plugin", "3.5.5") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-failsafe-plugin"
@@ -1520,7 +1520,7 @@ bom {
 			releaseNotes("https://github.com/apache/maven-javadoc-plugin/releases/tag/maven-javadoc-plugin-{version}")
 		}
 	}
-	library("Maven Resources Plugin", "3.4.0") {
+	library("Maven Resources Plugin", "3.5.0") {
 		prohibit {
 			contains "-beta-"
 			because "we don't want betas"
@@ -1534,7 +1534,7 @@ bom {
 			releaseNotes("https://github.com/apache/maven-resources-plugin/releases/tag/maven-resources-plugin-{version}")
 		}
 	}
-	library("Maven Shade Plugin", "3.6.1") {
+	library("Maven Shade Plugin", "3.6.2") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-shade-plugin"
@@ -1558,7 +1558,7 @@ bom {
 			releaseNotes("https://github.com/apache/maven-source-plugin/releases/tag/maven-source-plugin-{version}")
 		}
 	}
-	library("Maven Surefire Plugin", "3.5.4") {
+	library("Maven Surefire Plugin", "3.5.5") {
 		group("org.apache.maven.plugins") {
 			plugins = [
 				"maven-surefire-plugin"
@@ -1862,7 +1862,7 @@ bom {
 			releaseNotes("https://github.com/prometheus/client_java/releases/tag/parent-{version}")
 		}
 	}
-	library("Pulsar", "4.1.2") {
+	library("Pulsar", "4.1.3") {
 		group("org.apache.pulsar") {
 			bom("pulsar-bom")
 		}
@@ -1984,7 +1984,7 @@ bom {
 			releaseNotes("https://github.com/r2dbc/r2dbc-spi/releases/tag/v{version}")
 		}
 	}
-	library("Rabbit AMQP Client", "5.28.0") {
+	library("Rabbit AMQP Client", "5.29.0") {
 		group("com.rabbitmq") {
 			modules = [
 				"amqp-client"
@@ -2369,7 +2369,7 @@ bom {
 			]
 		}
 	}
-	library("Selenium", "4.40.0") {
+	library("Selenium", "4.41.0") {
 		group("org.seleniumhq.selenium") {
 			bom("selenium-bom")
 		}
@@ -2379,7 +2379,7 @@ bom {
 			releaseNotes("https://github.com/SeleniumHQ/selenium/releases/tag/selenium-{version}")
 		}
 	}
-	library("Selenium HtmlUnit", "4.40.0") {
+	library("Selenium HtmlUnit", "4.41.0") {
 		group("org.seleniumhq.selenium") {
 			modules = [
 				"htmlunit3-driver"
