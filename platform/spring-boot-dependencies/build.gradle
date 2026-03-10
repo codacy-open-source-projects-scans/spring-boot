@@ -318,6 +318,12 @@ bom {
 				"java-client"
 			]
 		}
+		alignWith {
+			version {
+				from "org.springframework.data:spring-data-couchbase"
+				managedBy "Spring Data Bom"
+			}
+		}
 		links {
 			site("https://docs.couchbase.com/java-sdk/current/hello-world/overview.html")
 			javadoc("https://javadoc.io/doc/com.couchbase.client/java-client/{version}", "com.couchbase.client")
@@ -2286,6 +2292,7 @@ bom {
 				"spring-boot-starter-reactor-netty",
 				"spring-boot-starter-restclient",
 				"spring-boot-starter-restclient-test",
+				"spring-boot-starter-restdocs",
 				"spring-boot-starter-rsocket",
 				"spring-boot-starter-rsocket-test",
 				"spring-boot-starter-security",
@@ -2649,7 +2656,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-session/releases/tag/{version}")
 		}
 	}
-	library("Spring WS", "5.0.0") {
+	library("Spring WS", "5.0.1-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.ws") {
 			bom("spring-ws-bom")
