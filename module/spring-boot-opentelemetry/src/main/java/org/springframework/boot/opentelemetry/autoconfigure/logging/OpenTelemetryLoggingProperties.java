@@ -14,35 +14,30 @@
  * limitations under the License.
  */
 
-package org.springframework.boot.micrometer.tracing.opentelemetry.autoconfigure;
+package org.springframework.boot.opentelemetry.autoconfigure.logging;
 
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration properties for tracing with OpenTelemetry.
+ * Configuration properties for logging with OpenTelemetry.
  *
  * @author Moritz Halbritter
- * @since 4.0.0
+ * @since 4.1.0
  */
-@ConfigurationProperties("management.opentelemetry.tracing")
-public class OpenTelemetryTracingProperties {
+@ConfigurationProperties("management.opentelemetry.logging")
+public class OpenTelemetryLoggingProperties {
 
 	/**
-	 * Span export configuration.
+	 * Logs export configuration.
 	 */
 	private final Export export = new Export();
 
 	/**
-	 * Span limit configuration.
+	 * Log limits configuration.
 	 */
 	private final Limits limits = new Limits();
-
-	/**
-	 * Sampler to use.
-	 */
-	private Sampler sampler = Sampler.PARENT_BASED_TRACE_ID_RATIO;
 
 	public Export getExport() {
 		return this.export;
@@ -52,20 +47,7 @@ public class OpenTelemetryTracingProperties {
 		return this.limits;
 	}
 
-	public Sampler getSampler() {
-		return this.sampler;
-	}
-
-	public void setSampler(Sampler sampler) {
-		this.sampler = sampler;
-	}
-
 	public static class Export {
-
-		/**
-		 * Whether unsampled spans should be exported.
-		 */
-		private boolean includeUnsampled;
 
 		/**
 		 * Maximum time an export will be allowed to run before being cancelled.
@@ -79,22 +61,14 @@ public class OpenTelemetryTracingProperties {
 		private int maxBatchSize = 512;
 
 		/**
-		 * Maximum number of spans that are kept in the queue before they will be dropped.
+		 * Maximum number of logs that are kept in the queue before they will be dropped.
 		 */
 		private int maxQueueSize = 2048;
 
 		/**
 		 * The delay interval between two consecutive exports.
 		 */
-		private Duration scheduleDelay = Duration.ofSeconds(5);
-
-		public boolean isIncludeUnsampled() {
-			return this.includeUnsampled;
-		}
-
-		public void setIncludeUnsampled(boolean includeUnsampled) {
-			this.includeUnsampled = includeUnsampled;
-		}
+		private Duration scheduleDelay = Duration.ofSeconds(1);
 
 		public Duration getTimeout() {
 			return this.timeout;
@@ -131,7 +105,7 @@ public class OpenTelemetryTracingProperties {
 	}
 
 	/**
-	 * Span limits.
+	 * Log limits.
 	 */
 	public static class Limits {
 
@@ -141,29 +115,9 @@ public class OpenTelemetryTracingProperties {
 		private int maxAttributeValueLength = Integer.MAX_VALUE;
 
 		/**
-		 * Maximum number of attributes per span.
+		 * Maximum number of attributes per log record.
 		 */
 		private int maxAttributes = 128;
-
-		/**
-		 * Maximum number of events per span.
-		 */
-		private int maxEvents = 128;
-
-		/**
-		 * Maximum number of links per span.
-		 */
-		private int maxLinks = 128;
-
-		/**
-		 * Maximum number of attributes per event.
-		 */
-		private int maxAttributesPerEvent = 128;
-
-		/**
-		 * Maximum number of attributes per link.
-		 */
-		private int maxAttributesPerLink = 128;
 
 		public int getMaxAttributeValueLength() {
 			return this.maxAttributeValueLength;
@@ -180,48 +134,6 @@ public class OpenTelemetryTracingProperties {
 		public void setMaxAttributes(int maxAttributes) {
 			this.maxAttributes = maxAttributes;
 		}
-
-		public int getMaxEvents() {
-			return this.maxEvents;
-		}
-
-		public void setMaxEvents(int maxEvents) {
-			this.maxEvents = maxEvents;
-		}
-
-		public int getMaxLinks() {
-			return this.maxLinks;
-		}
-
-		public void setMaxLinks(int maxLinks) {
-			this.maxLinks = maxLinks;
-		}
-
-		public int getMaxAttributesPerEvent() {
-			return this.maxAttributesPerEvent;
-		}
-
-		public void setMaxAttributesPerEvent(int maxAttributesPerEvent) {
-			this.maxAttributesPerEvent = maxAttributesPerEvent;
-		}
-
-		public int getMaxAttributesPerLink() {
-			return this.maxAttributesPerLink;
-		}
-
-		public void setMaxAttributesPerLink(int maxAttributesPerLink) {
-			this.maxAttributesPerLink = maxAttributesPerLink;
-		}
-
-	}
-
-	/**
-	 * Supported samplers.
-	 */
-	public enum Sampler {
-
-		ALWAYS_ON, ALWAYS_OFF, TRACE_ID_RATIO, PARENT_BASED_ALWAYS_ON, PARENT_BASED_ALWAYS_OFF,
-		PARENT_BASED_TRACE_ID_RATIO
 
 	}
 
