@@ -484,7 +484,7 @@ bom {
 			releaseNotes("https://github.com/git-commit-id/git-commit-id-maven-plugin/releases/tag/v{version}")
 		}
 	}
-	library("Glassfish JAXB", "4.0.6") {
+	library("Glassfish JAXB", "4.0.7") {
 		alignWith {
 			dependencyManagementDeclaredIn("org.glassfish.jaxb:jaxb-bom") {
 				excluding { candidate -> candidate.classifier().equals("sources") }
@@ -611,7 +611,7 @@ bom {
 			releaseNotes("https://github.com/hazelcast/hazelcast/releases/tag/v{version}")
 		}
 	}
-	library("Hibernate", "7.2.6.Final") {
+	library("Hibernate", "7.2.7.Final") {
 		group("org.hibernate.orm") {
 			modules = [
 				"hibernate-agroal",
@@ -948,7 +948,7 @@ bom {
 				.formatted(version.major(), version.minor()), "jakarta.ws.rs")
 		}
 	}
-	library("Jakarta XML Bind", "4.0.4") {
+	library("Jakarta XML Bind", "4.0.5") {
 		alignWith {
 			version {
 				from "org.glassfish.jaxb:jaxb-core"
@@ -2427,7 +2427,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "4.1.0-SNAPSHOT") {
+	library("Spring AMQP", "4.1.0-M3") {
 		considerSnapshots()
 		group("org.springframework.amqp") {
 			bom("spring-amqp-bom")
@@ -2457,7 +2457,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-batch/releases/tag/v{version}")
 		}
 	}
-	library("Spring Data Bom", "2026.0.0-SNAPSHOT") {
+	library("Spring Data Bom", "2026.0.0-M2") {
 		considerSnapshots()
 		calendarName = "Spring Data Release"
 		group("org.springframework.data") {
@@ -2555,7 +2555,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-kafka/releases/tag/v{version}")
 		}
 	}
-	library("Spring LDAP", "4.1.0-SNAPSHOT") {
+	library("Spring LDAP", "4.1.0-M2") {
 		considerSnapshots()
 		group("org.springframework.ldap") {
 			modules = [
@@ -2605,7 +2605,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-restdocs/releases/tag/v{version}")
 		}
 	}
-	library("Spring Security", "7.1.0-SNAPSHOT") {
+	library("Spring Security", "7.1.0-M3") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			bom("spring-security-bom")
@@ -2658,7 +2658,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ws/releases/tag/v{version}")
 		}
 	}
-	library("SQLite JDBC", "3.51.2.0") {
+	library("SQLite JDBC", "3.51.3.0") {
 		group("org.xerial") {
 			modules = [
 				"sqlite-jdbc"
