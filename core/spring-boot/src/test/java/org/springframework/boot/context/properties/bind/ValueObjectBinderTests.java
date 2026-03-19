@@ -207,6 +207,15 @@ class ValueObjectBinderTests {
 	}
 
 	@Test
+	void bindToEmptyRecordWhenParentOfEmptyString() {
+		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
+		source.put("foo", "");
+		this.sources.add(source);
+		EmptyRecord emptyRecord = this.binder.bind("foo", Bindable.of(EmptyRecord.class)).get();
+		assertThat(emptyRecord).isNotNull();
+	}
+
+	@Test
 	void bindToClassWithNoValueForPrimitiveShouldUseDefault() {
 		MockConfigurationPropertySource source = new MockConfigurationPropertySource();
 		source.put("foo.string-value", "foo");
@@ -996,6 +1005,10 @@ class ValueObjectBinderTests {
 		void setJsonPath(@Nullable JsonPath jsonPath) {
 			this.jsonPath = jsonPath;
 		}
+
+	}
+
+	record EmptyRecord() {
 
 	}
 
