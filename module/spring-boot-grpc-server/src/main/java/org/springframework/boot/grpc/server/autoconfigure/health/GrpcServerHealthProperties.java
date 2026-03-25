@@ -17,6 +17,7 @@
 package org.springframework.boot.grpc.server.autoconfigure.health;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -29,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.boot.convert.DurationUnit;
 import org.springframework.util.CollectionUtils;
 
 /**
@@ -42,7 +44,7 @@ import org.springframework.util.CollectionUtils;
 public class GrpcServerHealthProperties {
 
 	/**
-	 * Whether to auto-configure Health feature on the gRPC server.
+	 * Whether to auto-configure the Health feature on the gRPC server.
 	 */
 	private @Nullable Boolean enabled;
 
@@ -51,13 +53,10 @@ public class GrpcServerHealthProperties {
 	 */
 	private boolean includeOverallHealth = true;
 
-	/**
-	 * Properties that apply to all services.
-	 */
 	private final Services services = new Services();
 
 	/**
-	 * Service specific health reporting.
+	 * Service-specific health reporting.
 	 */
 	private final Map<String, Service> service = new LinkedHashMap<>();
 
@@ -125,7 +124,7 @@ public class GrpcServerHealthProperties {
 	}
 
 	/**
-	 * A health for a specific service.
+	 * Health for a specific service.
 	 */
 	public static class Service {
 
@@ -139,9 +138,6 @@ public class GrpcServerHealthProperties {
 		 */
 		private @Nullable Set<String> exclude;
 
-		/**
-		 * Status configuration.
-		 */
 		@NestedConfigurationProperty
 		private final Status status = new Status();
 
@@ -210,13 +206,17 @@ public class GrpcServerHealthProperties {
 		private boolean enabled = true;
 
 		/**
-		 * How often to update the health status.
+		 * How often to update the health status. If a duration suffix is not specified,
+		 * seconds will be used.
 		 */
+		@DurationUnit(ChronoUnit.SECONDS)
 		private Duration period = Duration.ofSeconds(5);
 
 		/**
-		 * The initial delay before updating the health status the very first time.
+		 * Initial delay before updating the health status the very first time. If a
+		 * duration suffix is not specified, seconds will be used.
 		 */
+		@DurationUnit(ChronoUnit.SECONDS)
 		private Duration delay = Duration.ofSeconds(5);
 
 		public boolean isEnabled() {
