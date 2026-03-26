@@ -32,6 +32,10 @@ bom {
 		}
 	}
 	library("ActiveMQ", "6.2.1") {
+		prohibit {
+			versionRange "[6.2.2]"
+			because "it contains a regression on Windows (https://github.com/apache/activemq/issues/1830)"
+		}
 		group("org.apache.activemq") {
 			modules = [
 				"activemq-console",
@@ -65,7 +69,7 @@ bom {
 			releaseNotes("https://github.com/eclipse-ee4j/angus-mail/releases/tag/{version}")
 		}
 	}
-	library("Artemis", "2.52.0") {
+	library("Artemis", "2.53.0") {
 		group("org.apache.artemis") {
 			bom("artemis-bom") {
 				permit("org.apache.activemq:artemis-amqp-protocol")
@@ -157,7 +161,7 @@ bom {
 				.formatted(version.major(), version.minor()))
 		}
 	}
-	library("Zipkin Reporter", "3.5.1") {
+	library("Zipkin Reporter", "3.5.3") {
 		group("io.zipkin.reporter2") {
 			bom("zipkin-reporter-bom")
 		}
@@ -166,7 +170,7 @@ bom {
 			releaseNotes("https://github.com/openzipkin/zipkin-reporter-java/releases/tag/{version}")
 		}
 	}
-	library("Brave", "6.3.0") {
+	library("Brave", "6.3.1") {
 		group("io.zipkin.brave") {
 			bom("brave-bom")
 		}
@@ -562,7 +566,7 @@ bom {
 			site("https://groovy-lang.org")
 		}
 	}
-	library("Grpc Java", "1.78.0") {
+	library("Grpc Java", "1.80.0") {
 		group("io.grpc") {
 			bom("grpc-bom")
 		}
@@ -1143,7 +1147,7 @@ bom {
 			]
 		}
 	}
-	library("jOOQ", "3.20.11") {
+	library("jOOQ", "3.21.0") {
 		group("org.jooq") {
 			bom("jooq-bom")
 			plugins = [
@@ -1752,7 +1756,7 @@ bom {
 			releaseNotes("https://github.com/neo4j/neo4j-java-driver/releases/tag/{version}")
 		}
 	}
-	library("Netty", "4.2.10.Final") {
+	library("Netty", "4.2.11.Final") {
 		prohibit {
 			contains ".Alpha"
 			contains ".Beta"
@@ -1841,7 +1845,7 @@ bom {
 			releaseNotes("https://github.com/oracle/oracle-r2dbc/releases/tag/{version}")
 		}
 	}
-	library("Protobuf Maven Plugin", "5.0.1") {
+	library("Protobuf Maven Plugin", "5.1.0") {
 		group("io.github.ascopes") {
 			plugins = [
 				"protobuf-maven-plugin"
@@ -1874,7 +1878,7 @@ bom {
 			releaseNotes("https://github.com/pgjdbc/pgjdbc/releases/tag/REL{version}")
 		}
 	}
-	library("Prometheus Client", "1.5.0") {
+	library("Prometheus Client", "1.5.1") {
 		group("io.prometheus") {
 			bom("prometheus-metrics-bom")
 		}
@@ -1918,7 +1922,7 @@ bom {
 			releaseNotes("https://qpid.apache.org/releases/qpid-protonj2-{version}/release-notes.html")
 		}
 	}
-	library("Protobuf Common Protos", "2.65.0") {
+	library("Protobuf Common Protos", "2.67.0") {
 		group("com.google.api.grpc") {
 			modules = [
 				"proto-google-common-protos"
@@ -1929,7 +1933,7 @@ bom {
 			releaseNotes("https://github.com/googleapis/sdk-platform-java/releases/tag/v-{version}")
 		}
 	}
-	library("Protobuf Java", "4.34.0") {
+	library("Protobuf Java", "4.34.1") {
 		group("com.google.protobuf") {
 			bom("protobuf-bom")
 		}
@@ -2836,7 +2840,7 @@ bom {
 			]
 		}
 	}
-	library("Thymeleaf Layout Dialect", "4.0.0") {
+	library("Thymeleaf Layout Dialect", "4.0.1") {
 		group("nz.net.ultraq.thymeleaf") {
 			modules = [
 				"thymeleaf-layout-dialect"
