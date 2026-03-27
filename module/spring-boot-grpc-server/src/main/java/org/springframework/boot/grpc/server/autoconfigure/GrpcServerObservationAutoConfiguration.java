@@ -42,7 +42,7 @@ import org.springframework.grpc.server.GrpcServerFactory;
  * @author Chris Bono
  * @author Dave Syer
  * @author Andrey Litvitski
- * @since 1.0.0
+ * @since 4.1.0
  */
 @AutoConfiguration(
 		afterName = "org.springframework.boot.micrometer.observation.autoconfigure.ObservationAutoConfiguration")
@@ -58,9 +58,9 @@ public final class GrpcServerObservationAutoConfiguration {
 	@GlobalServerInterceptor
 	@ConditionalOnMissingBean
 	ObservationGrpcServerInterceptor grpcServerObservationInterceptor(ObservationRegistry observationRegistry,
-			ObjectProvider<GrpcServerObservationConvention> convention) {
+			ObjectProvider<GrpcServerObservationConvention> customConvention) {
 		ObservationGrpcServerInterceptor interceptor = new ObservationGrpcServerInterceptor(observationRegistry);
-		convention.ifAvailable(interceptor::setCustomConvention);
+		customConvention.ifAvailable(interceptor::setCustomConvention);
 		return interceptor;
 	}
 
