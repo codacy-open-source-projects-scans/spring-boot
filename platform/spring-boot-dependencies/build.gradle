@@ -31,7 +31,7 @@ bom {
 			]
 		}
 	}
-	library("ActiveMQ", "6.2.3") {
+	library("ActiveMQ", "6.2.4") {
 		group("org.apache.activemq") {
 			modules = [
 				"activemq-console",
@@ -401,7 +401,7 @@ bom {
 			releaseNotes("https://github.com/ehcache/ehcache3/releases/tag/v{version}")
 		}
 	}
-	library("Elasticsearch Client", "9.3.1") {
+	library("Elasticsearch Client", "9.3.3") {
 		prohibit {
 			contains "-alpha"
 			contains "-beta"
@@ -1613,7 +1613,7 @@ bom {
 			releaseNotes("https://github.com/apache/maven-war-plugin/releases/tag/maven-war-plugin-{version}")
 		}
 	}
-	library("Micrometer", "1.17.0-M3") {
+	library("Micrometer", "1.17.0-SNAPSHOT") {
 		considerSnapshots()
 		group("io.micrometer") {
 			modules = [
@@ -1636,7 +1636,7 @@ bom {
 			releaseNotes("https://github.com/micrometer-metrics/micrometer/releases/tag/v{version}")
 		}
 	}
-	library("Micrometer Tracing", "1.7.0-M4") {
+	library("Micrometer Tracing", "1.7.0-SNAPSHOT") {
 		considerSnapshots()
 		group("io.micrometer") {
 			bom("micrometer-tracing-bom")
@@ -1767,7 +1767,7 @@ bom {
 			javadoc(version -> "https://netty.io/%s.%s/api".formatted(version.major(), version.minor()), "io.netty")
 		}
 	}
-	library("OpenTelemetry", "1.59.0") {
+	library("OpenTelemetry", "1.60.1") {
 		group("io.opentelemetry") {
 			bom("opentelemetry-bom")
 		}
@@ -2080,7 +2080,7 @@ bom {
 			]
 		}
 	}
-	library("Reactor Bom", "2025.0.4") {
+	library("Reactor Bom", "2025.0.5-SNAPSHOT") {
 		considerSnapshots()
 		calendarName = "Reactor"
 		group("io.projectreactor") {
@@ -2506,7 +2506,7 @@ bom {
 			]
 		}
 	}
-	library("Spring AMQP", "4.1.0-M3") {
+	library("Spring AMQP", "4.1.0-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.amqp") {
 			bom("spring-amqp-bom")
@@ -2536,7 +2536,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-batch/releases/tag/v{version}")
 		}
 	}
-	library("Spring Data Bom", "2026.0.0-M2") {
+	library("Spring Data Bom", "2026.0.0-SNAPSHOT") {
 		considerSnapshots()
 		calendarName = "Spring Data Release"
 		group("org.springframework.data") {
@@ -2566,7 +2566,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-framework/releases/tag/v{version}")
 		}
 	}
-	library("Spring GraphQL", "2.0.2") {
+	library("Spring GraphQL", "2.0.3-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.graphql") {
 			modules = [
@@ -2618,7 +2618,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-hateoas/releases/tag/{version}")
 		}
 	}
-	library("Spring Integration", "7.1.0-M3") {
+	library("Spring Integration", "7.1.0-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.integration") {
 			bom("spring-integration-bom")
@@ -2633,7 +2633,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-integration/releases/tag/v{version}")
 		}
 	}
-	library("Spring Kafka", "4.1.0-M2") {
+	library("Spring Kafka", "4.1.0-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.kafka") {
 			modules = [
@@ -2651,7 +2651,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-kafka/releases/tag/v{version}")
 		}
 	}
-	library("Spring LDAP", "4.1.0-M2") {
+	library("Spring LDAP", "4.1.0-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.ldap") {
 			modules = [
@@ -2671,7 +2671,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ldap/releases/tag/{version}")
 		}
 	}
-	library("Spring Pulsar", "2.0.4") {
+	library("Spring Pulsar", "2.0.5-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.pulsar") {
 			bom("spring-pulsar-bom")
@@ -2701,7 +2701,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-restdocs/releases/tag/v{version}")
 		}
 	}
-	library("Spring Security", "7.1.0-M3") {
+	library("Spring Security", "7.1.0-SNAPSHOT") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			bom("spring-security-bom")
