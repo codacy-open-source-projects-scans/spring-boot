@@ -1084,7 +1084,7 @@ bom {
 			releaseNotes("https://github.com/hunterhacker/jdom/releases/tag/JDOM-{version}")
 		}
 	}
-	library("Jedis", "7.4.0") {
+	library("Jedis", "7.4.1") {
 		alignWith {
 			property {
 				name "jedis"
@@ -1316,7 +1316,7 @@ bom {
 			releaseNotes("https://github.com/Kotlin/kotlinx.serialization/releases/tag/v{version}")
 		}
 	}
-	library("Lettuce", "7.5.0.RELEASE") {
+	library("Lettuce", "7.5.1.RELEASE") {
 		prohibit {
 			contains ".BETA"
 			because "we don't want betas"
@@ -1729,7 +1729,7 @@ bom {
 			]
 		}
 	}
-	library("Neo4j Java Driver", "6.0.3") {
+	library("Neo4j Java Driver", "6.0.4") {
 		alignWith {
 			version {
 				of "org.neo4j.driver:neo4j-java-driver"
