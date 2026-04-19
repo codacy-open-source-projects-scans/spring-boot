@@ -1039,7 +1039,7 @@ bom {
 			]
 		}
 	}
-	library("Jaxen", "2.0.0") {
+	library("Jaxen", "2.0.1") {
 		group("jaxen") {
 			modules = [
 				"jaxen"
@@ -1143,7 +1143,7 @@ bom {
 			]
 		}
 	}
-	library("jOOQ", "3.21.1") {
+	library("jOOQ", "3.21.2") {
 		group("org.jooq") {
 			bom("jooq-bom")
 			plugins = [
@@ -2536,7 +2536,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-batch/releases/tag/v{version}")
 		}
 	}
-	library("Spring Data Bom", "2026.0.0-SNAPSHOT") {
+	library("Spring Data Bom", "2026.0.0-RC1") {
 		considerSnapshots()
 		calendarName = "Spring Data Release"
 		group("org.springframework.data") {
@@ -2601,7 +2601,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-grpc/releases/tag/v{version}")
 		}
 	}
-	library("Spring HATEOAS", "3.1.0-M1") {
+	library("Spring HATEOAS", "3.1.0-RC1") {
 		considerSnapshots()
 		group("org.springframework.hateoas") {
 			modules = [
@@ -2651,7 +2651,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-kafka/releases/tag/v{version}")
 		}
 	}
-	library("Spring LDAP", "4.1.0-SNAPSHOT") {
+	library("Spring LDAP", "4.1.0-RC1") {
 		considerSnapshots()
 		group("org.springframework.ldap") {
 			modules = [
