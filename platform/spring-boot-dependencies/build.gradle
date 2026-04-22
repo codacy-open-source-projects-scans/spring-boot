@@ -2566,7 +2566,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-framework/releases/tag/v{version}")
 		}
 	}
-	library("Spring GraphQL", "2.0.3-SNAPSHOT") {
+	library("Spring GraphQL", "2.0.3") {
 		considerSnapshots()
 		group("org.springframework.graphql") {
 			modules = [
@@ -2671,7 +2671,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-ldap/releases/tag/{version}")
 		}
 	}
-	library("Spring Pulsar", "2.0.5-SNAPSHOT") {
+	library("Spring Pulsar", "2.0.5") {
 		considerSnapshots()
 		group("org.springframework.pulsar") {
 			bom("spring-pulsar-bom")
@@ -2701,7 +2701,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-restdocs/releases/tag/v{version}")
 		}
 	}
-	library("Spring Security", "7.1.0-SNAPSHOT") {
+	library("Spring Security", "7.1.0-RC1") {
 		considerSnapshots()
 		group("org.springframework.security") {
 			bom("spring-security-bom")
@@ -2716,7 +2716,7 @@ bom {
 			releaseNotes("https://github.com/spring-projects/spring-security/releases/tag/{version}")
 		}
 	}
-	library("Spring Session", "4.1.0-M1") {
+	library("Spring Session", "4.1.0-RC1") {
 		considerSnapshots()
 		prohibit {
 			startsWith(["Apple-", "Bean-", "Corn-", "Dragonfruit-"])
