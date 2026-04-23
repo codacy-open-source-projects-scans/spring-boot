@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,16 +14,22 @@
  * limitations under the License.
  */
 
-plugins {
-	id "org.springframework.boot.starter"
-}
+package org.springframework.boot.docs.io.grpc.testing.localserverport;
 
-description = "Starter for testing gRPC"
+interface HelloReply {
 
-dependencies {
-	api(project(":starter:spring-boot-starter-test"))
+	String getMessage();
 
-	api(project(":module:spring-boot-grpc-test"))
-	api("io.grpc:grpc-inprocess")
-	api("io.grpc:grpc-stub")
+	static Builder newBuilder() {
+		throw new IllegalStateException();
+	}
+
+	interface Builder {
+
+		Builder setMessage(String message);
+
+		HelloReply build();
+
+	}
+
 }

@@ -14,6 +14,9 @@ Doing so generates a new project structure so that you can xref:tutorial:first-a
 Check the https://github.com/spring-io/start.spring.io/blob/main/USING.adoc[start.spring.io user guide] for more details.
 ====
 
+NOTE: This tutorial provides steps that you can follow to build your first Spring Boot application.
+You don't need to know Java, however, if you're the kind of person that prefers learning the fundamentals first, you might want to check out https://dev.java/learn/ before you begin.
+
 
 
 [[getting-started.first-application.prerequisites]]
@@ -155,7 +158,7 @@ Open your favorite text editor and add the following:
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '{version-spring-boot}'
-    id 'io.spring.dependency-management' version '{version-dependency-management-plugin}'
+	id 'io.spring.dependency-management' version '{version-dependency-management-plugin}'
 }
 
 group = 'com.example'
@@ -170,7 +173,7 @@ java {
 repositories {
 	mavenCentral()
 ifeval::["{build-and-artifact-release-type}" == "opensource-snapshot"]
-    // you don't need this if you are using a release version
+	// you don't need this if you are using a release version
 	maven { url 'https://repo.spring.io/snapshot' }
 endif::[]
 }
