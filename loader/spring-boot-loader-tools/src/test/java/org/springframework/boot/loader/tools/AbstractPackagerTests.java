@@ -89,7 +89,6 @@ abstract class AbstractPackagerTests<P extends Packager> {
 	}
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File tempDir;
 
 	protected TestJarFile testJarFile;
@@ -397,6 +396,8 @@ abstract class AbstractPackagerTests<P extends Packager> {
 		assertThat(actualManifest).isNotNull();
 		assertThat(actualManifest.getMainAttributes()).containsEntry(new Attributes.Name("Spring-Boot-Lib"),
 				"BOOT-INF/lib/");
+		assertThat(actualManifest.getMainAttributes())
+			.doesNotContainKey(new Attributes.Name("Spring-Boot-Lib-Provided"));
 		assertThat(actualManifest.getMainAttributes()).containsEntry(new Attributes.Name("Spring-Boot-Classes"),
 				"BOOT-INF/classes/");
 	}
@@ -410,6 +411,8 @@ abstract class AbstractPackagerTests<P extends Packager> {
 		assertThat(actualManifest).isNotNull();
 		assertThat(actualManifest.getMainAttributes()).containsEntry(new Attributes.Name("Spring-Boot-Lib"),
 				"WEB-INF/lib/");
+		assertThat(actualManifest.getMainAttributes()).containsEntry(new Attributes.Name("Spring-Boot-Lib-Provided"),
+				"WEB-INF/lib-provided/");
 		assertThat(actualManifest.getMainAttributes()).containsEntry(new Attributes.Name("Spring-Boot-Classes"),
 				"WEB-INF/classes/");
 	}
@@ -485,6 +488,32 @@ abstract class AbstractPackagerTests<P extends Packager> {
 		P packager = createPackager();
 		execute(packager, NO_LIBRARIES);
 		assertThat(getPackagedEntry("META-INF/INDEX.LIST")).isNull();
+	}
+
+	@Test
+	void additionalConfigurationMetadataIsRemovedFromRepackagedJar() throws Exception {
+		this.testJarFile.addClass("A.class", ClassWithMainMethod.class);
+		this.testJarFile.addFile("META-INF/additional-spring-configuration-metadata.json",
+				new ByteArrayInputStream(new byte[0]));
+		this.testJarFile.addFile("META-INF/spring-configuration-metadata.json", new ByteArrayInputStream(new byte[0]));
+		P packager = createPackager();
+		execute(packager, NO_LIBRARIES);
+		assertThat(getPackagedEntry("META-INF/additional-spring-configuration-metadata.json")).isNull();
+		assertThat(getPackagedEntry("META-INF/spring-configuration-metadata.json")).isNotNull();
+	}
+
+	@Test
+	void additionalConfigurationMetadataIsRemovedFromRepackagedWar() throws Exception {
+		this.testJarFile.addClass("WEB-INF/classes/com/example/Application.class", ClassWithMainMethod.class);
+		this.testJarFile.addFile("WEB-INF/classes/META-INF/additional-spring-configuration-metadata.json",
+				new ByteArrayInputStream(new byte[0]));
+		this.testJarFile.addFile("WEB-INF/classes/META-INF/spring-configuration-metadata.json",
+				new ByteArrayInputStream(new byte[0]));
+		P packager = createPackager(this.testJarFile.getFile("war"));
+		packager.setLayout(new Layouts.War());
+		execute(packager, NO_LIBRARIES);
+		assertThat(getPackagedEntry("WEB-INF/classes/META-INF/additional-spring-configuration-metadata.json")).isNull();
+		assertThat(getPackagedEntry("WEB-INF/classes/META-INF/spring-configuration-metadata.json")).isNotNull();
 	}
 
 	@Test
@@ -688,16 +717,26 @@ abstract class AbstractPackagerTests<P extends Packager> {
 	}
 
 	@Test
-	void sbomManifestEntriesAreWritten() throws IOException {
-		this.testJarFile.addClass("com/example/Application.class", ClassWithMainMethod.class);
-		this.testJarFile.addFile("META-INF/sbom/application.cdx.json", new ByteArrayInputStream(new byte[0]));
+	void sbomManifestEntriesAreWrittenForJar() throws IOException {
+		sbomManifestEntriesAreWritten(new Layouts.Jar(), "");
+	}
+
+	@Test
+	void sbomManifestEntriesAreWrittenForWar() throws IOException {
+		sbomManifestEntriesAreWritten(new Layouts.War(), "WEB-INF/classes/");
+	}
+
+	private void sbomManifestEntriesAreWritten(Layout layout, String prefix) throws IOException {
+		this.testJarFile.addClass(prefix + "com/example/Application.class", ClassWithMainMethod.class);
+		this.testJarFile.addFile(prefix + "META-INF/sbom/application.cdx.json", new ByteArrayInputStream(new byte[0]));
 		P packager = createPackager(this.testJarFile.getFile());
+		packager.setLayout(layout);
 		execute(packager, NO_LIBRARIES);
 		Manifest manifest = getPackagedManifest();
 		assertThat(manifest).isNotNull();
 		assertThat(manifest.getMainAttributes().getValue("Sbom-Format")).isEqualTo("CycloneDX");
 		assertThat(manifest.getMainAttributes().getValue("Sbom-Location"))
-			.isEqualTo("META-INF/sbom/application.cdx.json");
+			.isEqualTo(prefix + "META-INF/sbom/application.cdx.json");
 	}
 
 	private File createLibraryJar() throws IOException {

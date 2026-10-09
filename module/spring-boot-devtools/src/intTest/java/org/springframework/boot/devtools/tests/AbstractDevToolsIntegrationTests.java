@@ -52,7 +52,6 @@ abstract class AbstractDevToolsIntegrationTests {
 	protected final JvmLauncher javaLauncher = new JvmLauncher();
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	protected static File temp;
 
 	private @Nullable LaunchedApplication launchedApplication;
@@ -101,12 +100,12 @@ abstract class AbstractDevToolsIntegrationTests {
 			this.classesDirectory = classesDirectory;
 		}
 
-		protected ControllerBuilder withRequestMapping(String mapping) {
+		ControllerBuilder withRequestMapping(String mapping) {
 			this.mappings.add(mapping);
 			return this;
 		}
 
-		protected void build() throws Exception {
+		void build() throws Exception {
 			DynamicType.Builder<Object> builder = new ByteBuddy().subclass(Object.class)
 				.name(this.name)
 				.annotateType(AnnotationDescription.Builder.ofType(RestController.class).build());

@@ -17,19 +17,24 @@
 package org.springframework.boot.ldap.autoconfigure.embedded;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
+import com.unboundid.ldap.sdk.OperationType;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.convert.Delimiter;
 import org.springframework.core.io.Resource;
+import org.springframework.util.StringUtils;
 
 /**
  * Configuration properties for Embedded LDAP.
  *
  * @author Eddú Meléndez
  * @author Mathieu Ouellet
+ * @author Sean Xu
  * @since 4.0.0
  */
 @ConfigurationProperties("spring.ldap.embedded")
@@ -39,6 +44,11 @@ public class EmbeddedLdapProperties {
 	 * Embedded LDAP port.
 	 */
 	private int port;
+
+	/**
+	 * LDAP operation types that require authentication.
+	 */
+	private Set<OperationType> authenticationRequiredOperationTypes = new LinkedHashSet<>();
 
 	/**
 	 * Embedded LDAP credentials.
@@ -72,6 +82,14 @@ public class EmbeddedLdapProperties {
 
 	public void setPort(int port) {
 		this.port = port;
+	}
+
+	public Set<OperationType> getAuthenticationRequiredOperationTypes() {
+		return this.authenticationRequiredOperationTypes;
+	}
+
+	public void setAuthenticationRequiredOperationTypes(Set<OperationType> authenticationRequiredOperationTypes) {
+		this.authenticationRequiredOperationTypes = authenticationRequiredOperationTypes;
 	}
 
 	public Credential getCredential() {
@@ -140,7 +158,7 @@ public class EmbeddedLdapProperties {
 
 		/**
 		 * Whether to enable SSL support. Enabled automatically if "bundle" is provided
-		 * unless specified otherwise.
+		 * unless specified otherwise. A "bundle" is required when enabled.
 		 */
 		private @Nullable Boolean enabled;
 
@@ -150,7 +168,7 @@ public class EmbeddedLdapProperties {
 		private @Nullable String bundle;
 
 		public boolean isEnabled() {
-			return (this.enabled != null) ? this.enabled : this.bundle != null;
+			return (this.enabled != null) ? this.enabled : StringUtils.hasText(this.bundle);
 		}
 
 		public void setEnabled(boolean enabled) {

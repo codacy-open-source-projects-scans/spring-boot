@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -41,14 +41,14 @@ plugins.withType(EclipsePlugin) {
 
 dependencies {
 	antDependencies "org.apache.ivy:ivy:2.5.0"
-	antDependencies project(path: ":build-plugin:spring-boot-antlib")
+	antDependencies project(":build-plugin:spring-boot-antlib")
 	antDependencies "org.apache.ant:ant-launcher:1.10.7"
 	antDependencies "org.apache.ant:ant:1.10.7"
 
 	testRepository(project(path: ":loader:spring-boot-loader", configuration: "mavenRepository"))
 	testRepository(project(path: ":starter:spring-boot-starter", configuration: "mavenRepository"))
 
-	testImplementation(project(path: ":loader:spring-boot-loader-tools"))
+	testImplementation(project(":loader:spring-boot-loader-tools"))
 	testImplementation("org.assertj:assertj-core")
 	testImplementation("org.junit.jupiter:junit-jupiter")
 	testImplementation("org.springframework:spring-core")

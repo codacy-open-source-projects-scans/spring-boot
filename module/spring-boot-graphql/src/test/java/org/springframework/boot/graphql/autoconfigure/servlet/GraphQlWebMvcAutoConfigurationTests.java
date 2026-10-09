@@ -21,8 +21,10 @@ import java.util.Map;
 import java.util.Optional;
 
 import graphql.schema.idl.TypeRuntimeWiring;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ThrowingConsumer;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.predicate.RuntimeHintsPredicates;
@@ -30,6 +32,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.graphql.autoconfigure.GraphQlAutoConfiguration;
 import org.springframework.boot.graphql.autoconfigure.GraphQlTestDataFetchers;
 import org.springframework.boot.http.converter.autoconfigure.HttpMessageConvertersAutoConfiguration;
+import org.springframework.boot.http.converter.autoconfigure.ServerHttpMessageConvertersCustomizer;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.boot.testsupport.classpath.resources.WithResource;
@@ -45,6 +48,7 @@ import org.springframework.graphql.server.webmvc.GraphQlHttpHandler;
 import org.springframework.graphql.server.webmvc.GraphQlSseHandler;
 import org.springframework.graphql.server.webmvc.GraphQlWebSocketHandler;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
@@ -55,6 +59,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import org.springframework.web.socket.server.support.WebSocketHandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -118,6 +125,46 @@ class GraphQlWebMvcAutoConfigurationTests {
 	}
 
 	@Test
+	void shouldConfigureHttpMethods() {
+		this.contextRunner.withPropertyValues("spring.graphql.http.methods=GET,POST").run((context) -> {
+			GraphQlHttpHandler handler = context.getBean(GraphQlHttpHandler.class);
+			assertThat(handler.getHttpMethods()).containsExactlyInAnyOrder(HttpMethod.GET, HttpMethod.POST);
+		});
+	}
+
+	@Test
+	void shouldConfigureSseMethods() {
+		this.contextRunner.withPropertyValues("spring.graphql.http.sse.methods=GET,POST").run((context) -> {
+			GraphQlSseHandler handler = context.getBean(GraphQlSseHandler.class);
+			assertThat(handler.getHttpMethods()).containsExactlyInAnyOrder(HttpMethod.GET, HttpMethod.POST);
+		});
+	}
+
+	@Test
+	void httpGetQueryShouldWorkWhenConfigured() {
+		this.contextRunner.withPropertyValues("spring.graphql.http.methods=GET,POST").run((context) -> {
+			MockMvcTester mvc = MockMvcTester.from(context);
+			String query = "{ bookById(id: \"book-1\"){ id name pageCount author } }";
+			assertThat(mvc.get().uri("/graphql?query={query}", query).accept(MediaType.APPLICATION_GRAPHQL_RESPONSE))
+				.hasStatusOk()
+				.bodyJson()
+				.extractingPath("data.bookById.name")
+				.asString()
+				.isEqualTo("GraphQL for beginners");
+		});
+	}
+
+	@Test
+	void sseSubscriptionShouldWorkWithGetWhenConfigured() {
+		this.contextRunner.withPropertyValues("spring.graphql.http.sse.methods=GET,POST").run((context) -> {
+			MockMvcTester mvc = MockMvcTester.from(context);
+			String query = "subscription TestSubscription { booksOnSale(minPages: 50){ id name pageCount author } }";
+			assertThat(mvc.get().uri("/graphql?query={query}", query).accept(MediaType.TEXT_EVENT_STREAM)).hasStatusOk()
+				.hasContentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM);
+		});
+	}
+
+	@Test
 	void simpleQueryShouldWork() {
 		withMockMvc((mvc) -> {
 			String query = "{ bookById(id: \\\"book-1\\\"){ id name pageCount author } }";
@@ -142,9 +189,9 @@ class GraphQlWebMvcAutoConfigurationTests {
 					assertThat(result).hasStatusOk().hasContentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM);
 					assertThat(result).bodyText()
 						.containsSubsequence("event:next",
-								"data:{\"data\":{\"booksOnSale\":{\"id\":\"book-1\",\"name\":\"GraphQL for beginners\",\"pageCount\":100,\"author\":\"John GraphQL\"}}}",
+								"data: {\"data\":{\"booksOnSale\":{\"id\":\"book-1\",\"name\":\"GraphQL for beginners\",\"pageCount\":100,\"author\":\"John GraphQL\"}}}",
 								"event:next",
-								"data:{\"data\":{\"booksOnSale\":{\"id\":\"book-2\",\"name\":\"Harry Potter and the Philosopher's Stone\",\"pageCount\":223,\"author\":\"Joanne Rowling\"}}}");
+								"data: {\"data\":{\"booksOnSale\":{\"id\":\"book-2\",\"name\":\"Harry Potter and the Philosopher's Stone\",\"pageCount\":223,\"author\":\"Joanne Rowling\"}}}");
 				});
 		});
 	}
@@ -240,16 +287,37 @@ class GraphQlWebMvcAutoConfigurationTests {
 	}
 
 	@Test
+	void shouldApplyJsonCustomizersInOrderB() {
+		this.contextRunner.withPropertyValues("spring.graphql.websocket.path=/ws")
+			.withUserConfiguration(CustomJsonConverterConfiguration.class)
+			.run((context) -> {
+				assertThat(context).hasSingleBean(GraphQlWebSocketHandler.class);
+				ServerHttpMessageConvertersCustomizer before = context.getBean("before",
+						ServerHttpMessageConvertersCustomizer.class);
+				ServerHttpMessageConvertersCustomizer after = context.getBean("after",
+						ServerHttpMessageConvertersCustomizer.class);
+				InOrder ordered = inOrder(before, after);
+				ordered.verify(before).customize(any());
+				ordered.verify(after).customize(any());
+			});
+	}
+
+	@Test
 	void shouldConfigureWebSocketProperties() {
 		this.contextRunner
 			.withPropertyValues("spring.graphql.websocket.path=/ws",
-					"spring.graphql.websocket.connection-init-timeout=120s", "spring.graphql.websocket.keep-alive=30s")
+					"spring.graphql.websocket.connection-init-timeout=120s", "spring.graphql.websocket.keep-alive=30s",
+					"spring.graphql.cors.allowed-origins=https://example.com")
 			.run((context) -> {
 				assertThat(context).hasSingleBean(GraphQlWebSocketHandler.class);
 				GraphQlWebSocketHandler graphQlWebSocketHandler = context.getBean(GraphQlWebSocketHandler.class);
 				assertThat(graphQlWebSocketHandler).extracting("initTimeoutDuration")
 					.isEqualTo(Duration.ofSeconds(120));
 				assertThat(graphQlWebSocketHandler).extracting("keepAliveDuration").isEqualTo(Duration.ofSeconds(30));
+				assertThat(graphQlWebSocketHandler).extracting("corsConfiguration")
+					.extracting("allowedOrigins")
+					.asInstanceOf(InstanceOfAssertFactories.LIST)
+					.containsExactly("https://example.com");
 			});
 	}
 
@@ -304,6 +372,23 @@ class GraphQlWebMvcAutoConfigurationTests {
 		WebGraphQlInterceptor customWebGraphQlInterceptor() {
 			return (webInput, interceptorChain) -> interceptorChain.next(webInput)
 				.doOnNext((output) -> output.getResponseHeaders().add("X-Custom-Header", "42"));
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class CustomJsonConverterConfiguration {
+
+		@Bean
+		@Order(1)
+		ServerHttpMessageConvertersCustomizer after() {
+			return mock();
+		}
+
+		@Bean
+		@Order(-1)
+		ServerHttpMessageConvertersCustomizer before() {
+			return mock();
 		}
 
 	}

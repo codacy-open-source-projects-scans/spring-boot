@@ -30,6 +30,7 @@ import io.micrometer.tracing.SpanCustomizer;
 import io.micrometer.tracing.Tracer.SpanInScope;
 import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandler;
 import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
+import io.micrometer.tracing.otel.bridge.BaggageTaggingSpanProcessor;
 import io.micrometer.tracing.otel.bridge.EventListener;
 import io.micrometer.tracing.otel.bridge.OtelCurrentTraceContext;
 import io.micrometer.tracing.otel.bridge.OtelPropagator;
@@ -40,17 +41,21 @@ import io.micrometer.tracing.otel.bridge.Slf4JBaggageEventListener;
 import io.micrometer.tracing.otel.bridge.Slf4JEventListener;
 import io.micrometer.tracing.otel.propagation.BaggageTextMapPropagator;
 import io.micrometer.tracing.propagation.Propagator;
+import io.opentelemetry.api.baggage.Baggage;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.MeterProvider;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.extension.trace.propagation.B3Propagator;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SpanLimits;
 import io.opentelemetry.sdk.trace.SpanProcessor;
@@ -67,6 +72,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.micrometer.observation.autoconfigure.ObservationAutoConfiguration;
 import org.springframework.boot.micrometer.tracing.autoconfigure.MicrometerTracingAutoConfiguration;
 import org.springframework.boot.micrometer.tracing.brave.autoconfigure.BraveAutoConfiguration;
+import org.springframework.boot.micrometer.tracing.opentelemetry.autoconfigure.otlp.OtlpTracingAutoConfiguration;
 import org.springframework.boot.opentelemetry.autoconfigure.OpenTelemetrySdkAutoConfiguration;
 import org.springframework.boot.test.context.FilteredClassLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -89,6 +95,7 @@ import static org.mockito.Mockito.mock;
  * @author Moritz Halbritter
  * @author Andy Wilkinson
  * @author Yanming Zhou
+ * @author Oleksandr Shevchenko
  */
 class OpenTelemetryTracingAutoConfigurationTests {
 
@@ -389,6 +396,54 @@ class OpenTelemetryTracingAutoConfigurationTests {
 	}
 
 	@Test
+	void shouldSupplyBaggageTaggingSpanProcessorWhenTagFieldsAreConfigured() {
+		this.contextRunner.withPropertyValues("management.tracing.baggage.tag-fields=t1,t2").run((context) -> {
+			assertThat(context).hasSingleBean(BaggageTaggingSpanProcessor.class);
+			SpanProcessors spanProcessors = context.getBean(SpanProcessors.class);
+			assertThat(spanProcessors).anyMatch(BaggageTaggingSpanProcessor.class::isInstance);
+		});
+	}
+
+	@Test
+	void shouldNotSupplyBaggageTaggingSpanProcessorWhenTagFieldsAreNotConfigured() {
+		this.contextRunner.run((context) -> assertThat(context).doesNotHaveBean(BaggageTaggingSpanProcessor.class));
+	}
+
+	@Test
+	void shouldNotSupplyBaggageTaggingSpanProcessorWhenBaggageDisabled() {
+		this.contextRunner
+			.withPropertyValues("management.tracing.baggage.enabled=false", "management.tracing.baggage.tag-fields=t1")
+			.run((context) -> assertThat(context).doesNotHaveBean(BaggageTaggingSpanProcessor.class));
+	}
+
+	@Test
+	void shouldBackOffOnCustomBaggageTaggingSpanProcessor() {
+		this.contextRunner.withPropertyValues("management.tracing.baggage.tag-fields=t1")
+			.withUserConfiguration(CustomBaggageTaggingSpanProcessorConfiguration.class)
+			.run((context) -> {
+				assertThat(context).hasBean("customBaggageTaggingSpanProcessor");
+				assertThat(context).hasSingleBean(BaggageTaggingSpanProcessor.class);
+			});
+	}
+
+	@Test
+	void baggageTaggingSpanProcessorShouldTagSpansWithBaggageFromParentContext() {
+		this.contextRunner
+			.withPropertyValues("management.tracing.baggage.tag-fields=t1",
+					"management.tracing.sampling.probability=1.0")
+			.run((context) -> {
+				Tracer tracer = context.getBean(Tracer.class);
+				try (Scope scope = Baggage.builder().put("t1", "v1").put("other", "v2").build().makeCurrent()) {
+					Span span = tracer.spanBuilder("test").startSpan();
+					span.end();
+					assertThat(span).isInstanceOf(ReadableSpan.class);
+					assertThat(((ReadableSpan) span).getAttribute(AttributeKey.stringKey("t1"))).isEqualTo("v1");
+					assertThat(((ReadableSpan) span).getAttribute(AttributeKey.stringKey("other"))).isNull();
+				}
+			});
+	}
+
+	@Test
 	void spanLimitsShouldBeConfiguredWithCustomProperties() {
 		this.contextRunner
 			.withPropertyValues("management.opentelemetry.tracing.limits.max-attribute-value-length=256",
@@ -528,6 +583,57 @@ class OpenTelemetryTracingAutoConfigurationTests {
 			});
 	}
 
+	@Test
+	void shouldMergeCommonAndSignalSpecificHeadersForTracing() {
+		new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(OtlpTracingAutoConfiguration.class))
+			.withPropertyValues("management.opentelemetry.otlp.endpoint=http://localhost:4318",
+					"management.opentelemetry.otlp.headers.common-header=common-value",
+					"management.opentelemetry.otlp.headers.shared-header=common-wins",
+					"management.opentelemetry.tracing.export.otlp.headers.tracing-header=tracing-value",
+					"management.opentelemetry.tracing.export.otlp.headers.shared-header=tracing-wins")
+			.run((context) -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).hasSingleBean(OtlpHttpSpanExporter.class);
+				OtlpHttpSpanExporter exporter = context.getBean(OtlpHttpSpanExporter.class);
+				assertThat(exporter).extracting("delegate.httpSender.headerSupplier")
+					.asInstanceOf(InstanceOfAssertFactories.type(Supplier.class))
+					.satisfies((headerSupplier) -> assertThat(headerSupplier.get())
+						.asInstanceOf(InstanceOfAssertFactories.map(String.class, List.class))
+						.containsEntry("common-header", List.of("common-value"))
+						.containsEntry("tracing-header", List.of("tracing-value"))
+						.containsEntry("shared-header", List.of("tracing-wins")));
+			});
+	}
+
+	@Test
+	void shouldAppendTracesPathToCommonEndpoint() {
+		new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(OtlpTracingAutoConfiguration.class))
+			.withPropertyValues("management.opentelemetry.otlp.endpoint=http://localhost:4318")
+			.run((context) -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).hasSingleBean(OtlpHttpSpanExporter.class);
+				OtlpHttpSpanExporter exporter = context.getBean(OtlpHttpSpanExporter.class);
+				assertThat(exporter).extracting("delegate.httpSender.url")
+					.extracting(Object::toString)
+					.isEqualTo("http://localhost:4318/v1/traces");
+			});
+	}
+
+	@Test
+	void shouldNotAppendTracesPathToTracingSpecificEndpoint() {
+		new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(OtlpTracingAutoConfiguration.class))
+			.withPropertyValues("management.opentelemetry.otlp.endpoint=http://localhost:4318",
+					"management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/custom/traces")
+			.run((context) -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).hasSingleBean(OtlpHttpSpanExporter.class);
+				OtlpHttpSpanExporter exporter = context.getBean(OtlpHttpSpanExporter.class);
+				assertThat(exporter).extracting("delegate.httpSender.url")
+					.extracting(Object::toString)
+					.isEqualTo("http://localhost:4318/custom/traces");
+			});
+	}
+
 	private void initializeOpenTelemetry(ConfigurableApplicationContext context) {
 		context.addApplicationListener(new OpenTelemetryEventPublisherBeansApplicationListener());
 		Span.current();
@@ -551,6 +657,16 @@ class OpenTelemetryTracingAutoConfigurationTests {
 			given(mock.meterBuilder(anyString()))
 				.willAnswer((invocation) -> MeterProvider.noop().meterBuilder(invocation.getArgument(0, String.class)));
 			return mock;
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	private static final class CustomBaggageTaggingSpanProcessorConfiguration {
+
+		@Bean
+		BaggageTaggingSpanProcessor customBaggageTaggingSpanProcessor() {
+			return new BaggageTaggingSpanProcessor(List.of("custom"));
 		}
 
 	}

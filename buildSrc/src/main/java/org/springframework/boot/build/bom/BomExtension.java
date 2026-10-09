@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -44,10 +45,14 @@ import org.springframework.boot.build.bom.BomExtension.LibraryHandler.AlignWithH
 import org.springframework.boot.build.bom.Library.BomAlignment;
 import org.springframework.boot.build.bom.Library.DependencyVersionAlignment;
 import org.springframework.boot.build.bom.Library.Exclusion;
+import org.springframework.boot.build.bom.Library.FirstParty;
 import org.springframework.boot.build.bom.Library.Group;
 import org.springframework.boot.build.bom.Library.ImportedBom;
-import org.springframework.boot.build.bom.Library.LibraryVersion;
 import org.springframework.boot.build.bom.Library.Link;
+import org.springframework.boot.build.bom.Library.LinkType;
+import org.springframework.boot.build.bom.Library.LinkedModule;
+import org.springframework.boot.build.bom.Library.LinkedVersion;
+import org.springframework.boot.build.bom.Library.Links;
 import org.springframework.boot.build.bom.Library.Module;
 import org.springframework.boot.build.bom.Library.PermittedDependency;
 import org.springframework.boot.build.bom.Library.PomPropertyVersionAlignment;
@@ -119,11 +124,17 @@ public class BomExtension {
 		LibraryHandler libraryHandler = objects.newInstance(LibraryHandler.class, this.project,
 				(version != null) ? version : "");
 		action.execute(libraryHandler);
-		LibraryVersion libraryVersion = new LibraryVersion(DependencyVersion.parse(libraryHandler.version));
+		DependencyVersion libraryVersion = DependencyVersion.parse(libraryHandler.version);
+		FirstParty firstParty = null;
+		if (libraryHandler.firstParty) {
+			String releaseTrainId = (libraryHandler.releaseTrainId != null) ? libraryHandler.releaseTrainId
+					: name.replace(' ', '-').toLowerCase(Locale.ROOT);
+			firstParty = new FirstParty(releaseTrainId);
+		}
 		addLibrary(new Library(name, libraryHandler.calendarName, libraryVersion, libraryHandler.groups,
-				libraryHandler.upgradePolicy, libraryHandler.prohibitedVersions, libraryHandler.considerSnapshots,
+				libraryHandler.upgradePolicy, libraryHandler.prohibitedVersions, firstParty,
 				versionAlignment(libraryHandler), libraryHandler.alignWith.bomAlignment, libraryHandler.linkRootName,
-				libraryHandler.links));
+				libraryHandler.links, libraryHandler.moduleLinks));
 	}
 
 	private VersionAlignment versionAlignment(LibraryHandler libraryHandler) {
@@ -172,7 +183,7 @@ public class BomExtension {
 		this.libraries.add(library);
 		String versionProperty = library.getVersionProperty();
 		if (versionProperty != null) {
-			this.properties.put(versionProperty, library.getVersion().getVersion());
+			this.properties.put(versionProperty, library.getVersion());
 		}
 		for (Group group : library.getGroups()) {
 			for (Module module : group.getModules()) {
@@ -187,15 +198,14 @@ public class BomExtension {
 	private void addModule(Library library, DependencyHandler dependencies, String versionProperty, Group group,
 			Module module) {
 		putArtifactVersionProperty(group.getId(), module.getName(), module.getClassifier(), versionProperty);
-		String constraint = createDependencyNotation(group.getId(), module.getName(),
-				library.getVersion().getVersion());
+		String constraint = createDependencyNotation(group.getId(), module.getName(), library.getVersion());
 		dependencies.getConstraints().add(JavaPlatformPlugin.API_CONFIGURATION_NAME, constraint);
 	}
 
 	private void addBomImport(Library library, DependencyHandler dependencies, String versionProperty, Group group,
 			String bomImport) {
 		putArtifactVersionProperty(group.getId(), bomImport, versionProperty);
-		String bomDependency = createDependencyNotation(group.getId(), bomImport, library.getVersion().getVersion());
+		String bomDependency = createDependencyNotation(group.getId(), bomImport, library.getVersion());
 		dependencies.add(JavaPlatformPlugin.API_CONFIGURATION_NAME, dependencies.platform(bomDependency));
 		dependencies.add(BomPlugin.API_ENFORCED_CONFIGURATION_NAME, dependencies.enforcedPlatform(bomDependency));
 	}
@@ -212,7 +222,9 @@ public class BomExtension {
 
 		private final AlignWithHandler alignWith;
 
-		private boolean considerSnapshots;
+		private boolean firstParty = false;
+
+		private String releaseTrainId = null;
 
 		private String version;
 
@@ -220,7 +232,9 @@ public class BomExtension {
 
 		private String linkRootName;
 
-		private final Map<String, List<Link>> links = new HashMap<>();
+		private Links links;
+
+		private Map<LinkedModule, Links> moduleLinks;
 
 		@Inject
 		public LibraryHandler(Project project, String version) {
@@ -233,8 +247,15 @@ public class BomExtension {
 			this.version = version;
 		}
 
-		public void considerSnapshots() {
-			this.considerSnapshots = true;
+		public void firstParty() {
+			this.firstParty = true;
+		}
+
+		public void firstParty(Action<FirstPartyHandler> action) {
+			FirstPartyHandler handler = new FirstPartyHandler();
+			action.execute(handler);
+			this.firstParty = true;
+			this.releaseTrainId = handler.releaseTrainId;
 		}
 
 		public void setCalendarName(String calendarName) {
@@ -263,15 +284,17 @@ public class BomExtension {
 			action.execute(this.alignWith);
 		}
 
-		public void links(Action<LinksHandler> action) {
+		public void links(Action<LibraryLinksHandler> action) {
 			links(null, action);
 		}
 
-		public void links(String linkRootName, Action<LinksHandler> action) {
-			LinksHandler handler = new LinksHandler();
+		public void links(String linkRootName, Action<LibraryLinksHandler> action) {
+			LibraryLinksHandler handler = new LibraryLinksHandler();
 			action.execute(handler);
 			this.linkRootName = linkRootName;
-			this.links.putAll(handler.links);
+			this.links = new Links(handler.links());
+			this.moduleLinks = new HashMap<>();
+			handler.moduleLinks().forEach((module, links) -> this.moduleLinks.put(module, new Links(links)));
 		}
 
 		public static class ProhibitedHandler {
@@ -493,34 +516,48 @@ public class BomExtension {
 
 		}
 
+		public static class FirstPartyHandler {
+
+			private String releaseTrainId;
+
+			public void setReleaseTrainId(String releaseTrainId) {
+				this.releaseTrainId = releaseTrainId;
+			}
+
+		}
+
 	}
 
-	public static class LinksHandler {
+	public abstract static class LinksHandler {
 
-		private final Map<String, List<Link>> links = new HashMap<>();
+		private final Map<LinkType, List<Link>> links = new HashMap<>();
+
+		Map<LinkType, List<Link>> links() {
+			return this.links;
+		}
 
 		public void site(String linkTemplate) {
 			site(asFactory(linkTemplate));
 		}
 
-		public void site(Function<LibraryVersion, String> linkFactory) {
-			add("site", linkFactory);
+		public void site(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.SITE, linkFactory);
 		}
 
 		public void github(String linkTemplate) {
 			github(asFactory(linkTemplate));
 		}
 
-		public void github(Function<LibraryVersion, String> linkFactory) {
-			add("github", linkFactory);
+		public void github(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.GITHUB, linkFactory);
 		}
 
 		public void docs(String linkTemplate) {
 			docs(asFactory(linkTemplate));
 		}
 
-		public void docs(Function<LibraryVersion, String> linkFactory) {
-			add("docs", linkFactory);
+		public void docs(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.DOCS, linkFactory);
 		}
 
 		public void javadoc(String linkTemplate) {
@@ -531,50 +568,72 @@ public class BomExtension {
 			javadoc(asFactory(linkTemplate), packages);
 		}
 
-		public void javadoc(Function<LibraryVersion, String> linkFactory) {
-			add("javadoc", linkFactory);
+		public void javadoc(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.JAVADOC, linkFactory);
 		}
 
-		public void javadoc(Function<LibraryVersion, String> linkFactory, String... packages) {
-			add("javadoc", linkFactory, packages);
-		}
-
-		public void javadoc(String rootName, Function<LibraryVersion, String> linkFactory, String... packages) {
-			add(rootName, "javadoc", linkFactory, packages);
+		public void javadoc(Function<LinkedVersion, String> linkFactory, String... packages) {
+			add(LinkType.JAVADOC, linkFactory, packages);
 		}
 
 		public void releaseNotes(String linkTemplate) {
 			releaseNotes(asFactory(linkTemplate));
 		}
 
-		public void releaseNotes(Function<LibraryVersion, String> linkFactory) {
-			add("releaseNotes", linkFactory);
+		public void releaseNotes(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.RELEASE_NOTES, linkFactory);
 		}
 
-		public void add(String name, String linkTemplate) {
-			add(name, asFactory(linkTemplate));
+		public void layersXsd(String linkTemplate) {
+			layersXsd(asFactory(linkTemplate));
 		}
 
-		public void add(String name, Function<LibraryVersion, String> linkFactory) {
+		public void layersXsd(Function<LinkedVersion, String> linkFactory) {
+			add(LinkType.LAYERS_XSD, linkFactory);
+		}
+
+		private void add(LinkType name, Function<LinkedVersion, String> linkFactory) {
 			add(name, linkFactory, null);
 		}
 
-		public void add(String name, Function<LibraryVersion, String> linkFactory, String[] packages) {
-			add(null, name, linkFactory, packages);
+		private void add(LinkType type, Function<LinkedVersion, String> linkFactory, String[] packages) {
+			Link link = new Link(linkFactory, (packages != null) ? List.of(packages) : null);
+			this.links.computeIfAbsent(type, (key) -> new ArrayList<>()).add(link);
 		}
 
-		private void add(String rootName, String name, Function<LibraryVersion, String> linkFactory,
-				String[] packages) {
-			Link link = new Link(rootName, linkFactory, (packages != null) ? List.of(packages) : null);
-			this.links.computeIfAbsent(name, (key) -> new ArrayList<>()).add(link);
-		}
-
-		private Function<LibraryVersion, String> asFactory(String linkTemplate) {
+		private Function<LinkedVersion, String> asFactory(String linkTemplate) {
 			return (version) -> {
 				PlaceholderResolver resolver = (name) -> "version".equals(name) ? version.toString() : null;
 				return new PropertyPlaceholderHelper("{", "}").replacePlaceholders(linkTemplate, resolver);
 			};
 		}
+
+	}
+
+	public static class LibraryLinksHandler extends LinksHandler {
+
+		private final Map<LinkedModule, Map<LinkType, List<Link>>> moduleLinks = new HashMap<>();
+
+		Map<LinkedModule, Map<LinkType, List<Link>>> moduleLinks() {
+			return this.moduleLinks;
+		}
+
+		public void module(String moduleName, Closure<ModuleLinksHandler> closure) {
+			module(moduleName, List.of(moduleName), closure);
+		}
+
+		public void module(String rootName, List<String> moduleNames, Closure<ModuleLinksHandler> closure) {
+			ModuleLinksHandler handler = new ModuleLinksHandler();
+			closure.setDelegate(handler);
+			closure.setResolveStrategy(Closure.DELEGATE_FIRST);
+			closure.call(handler);
+			this.moduleLinks.computeIfAbsent(new LinkedModule(rootName, moduleNames), (key) -> new HashMap<>())
+				.putAll(handler.links());
+		}
+
+	}
+
+	public static class ModuleLinksHandler extends LinksHandler {
 
 	}
 

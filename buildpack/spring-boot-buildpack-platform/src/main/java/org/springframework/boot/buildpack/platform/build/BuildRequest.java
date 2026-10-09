@@ -48,11 +48,15 @@ import org.springframework.util.Assert;
  */
 public class BuildRequest {
 
-	static final String DEFAULT_BUILDER_IMAGE_NAME = "paketobuildpacks/builder-noble-java-tiny";
+	static final String DEFAULT_BUILDER_IMAGE_NAME = "paketobuildpacks/ubuntu-resolute-builder";
 
 	static final String DEFAULT_BUILDER_IMAGE_REF = DEFAULT_BUILDER_IMAGE_NAME + ":latest";
 
+	static final String DEFAULT_RUN_IMAGE_NAME = "paketobuildpacks/ubuntu-resolute-run-tiny";
+
 	static final List<ImageReference> KNOWN_TRUSTED_BUILDERS = List.of(
+			ImageReference.of("paketobuildpacks/ubuntu-resolute-builder"),
+			ImageReference.of("paketobuildpacks/ubuntu-resolute-builder-buildpackless"),
 			ImageReference.of("paketobuildpacks/builder-noble-java-tiny"),
 			ImageReference.of("paketobuildpacks/builder-jammy-java-tiny"),
 			ImageReference.of("paketobuildpacks/builder-jammy-tiny"),
@@ -64,6 +68,9 @@ public class BuildRequest {
 			ImageReference.of("gcr.io/buildpacks/builder"), ImageReference.of("heroku/builder"));
 
 	private static final ImageReference DEFAULT_BUILDER = ImageReference.of(DEFAULT_BUILDER_IMAGE_REF);
+
+	private static final ImageReference DEFAULT_RUN_IMAGE = ImageReference.of(DEFAULT_RUN_IMAGE_NAME)
+		.inTaggedOrDigestForm();
 
 	private final ImageReference name;
 
@@ -95,11 +102,11 @@ public class BuildRequest {
 
 	private final List<ImageReference> tags;
 
-	private final @Nullable Cache buildWorkspace;
+	private final @Nullable LocalCache buildWorkspace;
 
 	private final @Nullable Cache buildCache;
 
-	private final @Nullable Cache launchCache;
+	private final @Nullable LocalCache launchCache;
 
 	private final @Nullable Instant createdDate;
 
@@ -140,8 +147,8 @@ public class BuildRequest {
 			@Nullable Boolean trustBuilder, @Nullable ImageReference runImage, Creator creator, Map<String, String> env,
 			boolean cleanCache, boolean verboseLogging, PullPolicy pullPolicy, boolean publish,
 			List<BuildpackReference> buildpacks, List<Binding> bindings, @Nullable String network,
-			List<ImageReference> tags, @Nullable Cache buildWorkspace, @Nullable Cache buildCache,
-			@Nullable Cache launchCache, @Nullable Instant createdDate, @Nullable String applicationDirectory,
+			List<ImageReference> tags, @Nullable LocalCache buildWorkspace, @Nullable Cache buildCache,
+			@Nullable LocalCache launchCache, @Nullable Instant createdDate, @Nullable String applicationDirectory,
 			@Nullable List<String> securityOptions, @Nullable ImagePlatform platform) {
 		this.name = name;
 		this.applicationContent = applicationContent;
@@ -395,7 +402,7 @@ public class BuildRequest {
 	 * @return an updated build request
 	 * @since 3.2.0
 	 */
-	public BuildRequest withBuildWorkspace(Cache buildWorkspace) {
+	public BuildRequest withBuildWorkspace(LocalCache buildWorkspace) {
 		Assert.notNull(buildWorkspace, "'buildWorkspace' must not be null");
 		return new BuildRequest(this.name, this.applicationContent, this.builder, this.trustBuilder, this.runImage,
 				this.creator, this.env, this.cleanCache, this.verboseLogging, this.pullPolicy, this.publish,
@@ -421,7 +428,7 @@ public class BuildRequest {
 	 * @param launchCache the cache
 	 * @return an updated build request
 	 */
-	public BuildRequest withLaunchCache(Cache launchCache) {
+	public BuildRequest withLaunchCache(LocalCache launchCache) {
 		Assert.notNull(launchCache, "'launchCache' must not be null");
 		return new BuildRequest(this.name, this.applicationContent, this.builder, this.trustBuilder, this.runImage,
 				this.creator, this.env, this.cleanCache, this.verboseLogging, this.pullPolicy, this.publish,
@@ -546,6 +553,18 @@ public class BuildRequest {
 	}
 
 	/**
+	 * Return the run image that should be used when no run image has been configured, or
+	 * {@code null} if the run image from the builder metadata should be used.
+	 * @return the default run image or {@code null}
+	 */
+	@Nullable ImageReference getDefaultRunImage() {
+		if (this.builder == DEFAULT_BUILDER) {
+			return DEFAULT_RUN_IMAGE;
+		}
+		return null;
+	}
+
+	/**
 	 * Return the {@link Creator} the builder should use.
 	 * @return the {@code Creator}
 	 */
@@ -632,7 +651,7 @@ public class BuildRequest {
 	 * @return the build workspace or {@code null}
 	 * @since 3.2.0
 	 */
-	public @Nullable Cache getBuildWorkspace() {
+	public @Nullable LocalCache getBuildWorkspace() {
 		return this.buildWorkspace;
 	}
 
@@ -648,7 +667,7 @@ public class BuildRequest {
 	 * Return the custom launch cache that should be used by the lifecycle.
 	 * @return the launch cache
 	 */
-	public @Nullable Cache getLaunchCache() {
+	public @Nullable LocalCache getLaunchCache() {
 		return this.launchCache;
 	}
 

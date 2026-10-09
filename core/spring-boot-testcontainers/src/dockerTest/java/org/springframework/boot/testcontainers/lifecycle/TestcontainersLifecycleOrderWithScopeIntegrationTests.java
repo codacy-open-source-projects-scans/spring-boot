@@ -77,7 +77,7 @@ class TestcontainersLifecycleOrderWithScopeIntegrationTests {
 		@Scope("custom")
 		@ServiceConnection
 		RedisContainer redisContainer() {
-			return TestImage.container(EventRecordingRedisContainer.class);
+			return TestImage.forContainer(EventRecordingRedisContainer.class);
 		}
 
 	}
@@ -164,7 +164,7 @@ class TestcontainersLifecycleOrderWithScopeIntegrationTests {
 		}
 
 		@Override
-		public Object remove(String name) {
+		public @Nullable Object remove(String name) {
 			synchronized (this) {
 				Object removed = this.instances.remove(name);
 				List<Runnable> destructor = this.destructors.get(name);

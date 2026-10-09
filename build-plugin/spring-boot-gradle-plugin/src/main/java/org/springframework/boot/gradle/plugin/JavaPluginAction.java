@@ -90,7 +90,7 @@ final class JavaPluginAction implements PluginApplicationAction {
 		configureBootTestRunTask(project, resolveMainTestClassName);
 		project.afterEvaluate(this::configureUtf8Encoding);
 		configureParametersCompilerArg(project);
-		configureAdditionalMetadataLocations(project);
+		configureConfigurationProcessorCompilerArgs(project);
 		configureSpringBootStarterTestToDependOnJUnitPlatformLauncher(project);
 	}
 
@@ -263,13 +263,13 @@ final class JavaPluginAction implements PluginApplicationAction {
 		});
 	}
 
-	private void configureAdditionalMetadataLocations(Project project) {
+	private void configureConfigurationProcessorCompilerArgs(Project project) {
 		project.afterEvaluate((evaluated) -> evaluated.getTasks()
 			.withType(JavaCompile.class)
-			.configureEach(this::configureAdditionalMetadataLocations));
+			.configureEach(this::configureConfigurationProcessorCompilerArgs));
 	}
 
-	private void configureAdditionalMetadataLocations(JavaCompile compile) {
+	private void configureConfigurationProcessorCompilerArgs(JavaCompile compile) {
 		SourceSetContainer sourceSets = compile.getProject()
 			.getExtensions()
 			.getByType(JavaPluginExtension.class)
@@ -278,43 +278,54 @@ final class JavaPluginAction implements PluginApplicationAction {
 			.filter((candidate) -> candidate.getCompileJavaTaskName().equals(compile.getName()))
 			.map((match) -> match.getResources().getSrcDirs())
 			.findFirst()
-			.ifPresent((locations) -> compile.doFirst(new AdditionalMetadataLocationsConfigurer(locations)));
+			.ifPresent((locations) -> {
+				File descriptionCache = new File(compile.getTemporaryDir(),
+						"previous-spring-configuration-metadata.json");
+				compile.getOutputs().file(descriptionCache);
+				compile.doFirst(new ConfigurationProcessorCompilerArgsConfigurer(locations, descriptionCache));
+			});
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void configureProductionRuntimeClasspathConfiguration(Project project) {
 		Configuration productionRuntimeClasspath = project.getConfigurations()
 			.create(SpringBootPlugin.PRODUCTION_RUNTIME_CLASSPATH_CONFIGURATION_NAME);
 		Configuration runtimeClasspath = project.getConfigurations()
 			.getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-		productionRuntimeClasspath.attributes((attributes) -> {
-			ProviderFactory providers = project.getProviders();
-			AttributeContainer sourceAttributes = runtimeClasspath.getAttributes();
-			for (Attribute attribute : sourceAttributes.keySet()) {
-				attributes.attributeProvider(attribute,
-						providers.provider(() -> sourceAttributes.getAttribute(attribute)));
-			}
-		});
+		copyAttributes(project, runtimeClasspath, productionRuntimeClasspath);
 		productionRuntimeClasspath.setExtendsFrom(runtimeClasspath.getExtendsFrom());
 		productionRuntimeClasspath.setCanBeResolved(runtimeClasspath.isCanBeResolved());
 		productionRuntimeClasspath.setCanBeConsumed(runtimeClasspath.isCanBeConsumed());
 		productionRuntimeClasspath.shouldResolveConsistentlyWith(runtimeClasspath);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void copyAttributes(Project project, Configuration sourceConfiguration, Configuration targetConfiguration) {
+		targetConfiguration.attributes((attributes) -> {
+			ProviderFactory providers = project.getProviders();
+			AttributeContainer sourceAttributes = sourceConfiguration.getAttributes();
+			for (Attribute attribute : sourceAttributes.keySet()) {
+				attributes.attributeProvider(attribute,
+						providers.provider(() -> sourceAttributes.getAttribute(attribute)));
+			}
+		});
+	}
+
 	private void configureDevelopmentOnlyConfiguration(Project project) {
 		Configuration developmentOnly = project.getConfigurations()
 			.create(SpringBootPlugin.DEVELOPMENT_ONLY_CONFIGURATION_NAME);
+		developmentOnly.setCanBeConsumed(false);
 		developmentOnly
 			.setDescription("Configuration for development-only dependencies such as Spring Boot's DevTools.");
 		Configuration runtimeClasspath = project.getConfigurations()
 			.getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
-
 		runtimeClasspath.extendsFrom(developmentOnly);
+		copyAttributes(project, runtimeClasspath, developmentOnly);
 	}
 
 	private void configureTestAndDevelopmentOnlyConfiguration(Project project) {
 		Configuration testAndDevelopmentOnly = project.getConfigurations()
 			.create(SpringBootPlugin.TEST_AND_DEVELOPMENT_ONLY_CONFIGURATION_NAME);
+		testAndDevelopmentOnly.setCanBeConsumed(false);
 		testAndDevelopmentOnly
 			.setDescription("Configuration for test and development-only dependencies such as Spring Boot's DevTools.");
 		Configuration runtimeClasspath = project.getConfigurations()
@@ -323,6 +334,7 @@ final class JavaPluginAction implements PluginApplicationAction {
 		Configuration testImplementation = project.getConfigurations()
 			.getByName(JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME);
 		testImplementation.extendsFrom(testAndDevelopmentOnly);
+		copyAttributes(project, runtimeClasspath, testAndDevelopmentOnly);
 	}
 
 	private void configureSpringBootStarterTestToDependOnJUnitPlatformLauncher(Project project) {
@@ -335,16 +347,19 @@ final class JavaPluginAction implements PluginApplicationAction {
 	}
 
 	/**
-	 * Task {@link Action} to add additional meta-data locations. We need to use an
-	 * inner-class rather than a lambda due to
-	 * https://github.com/gradle/gradle/issues/5510.
+	 * Task {@link Action} to add compiler args used by
+	 * {@code spring-boot-configuration-processor}. We need to use an inner-class rather
+	 * than a lambda due to https://github.com/gradle/gradle/issues/5510.
 	 */
-	private static final class AdditionalMetadataLocationsConfigurer implements Action<Task> {
+	private static final class ConfigurationProcessorCompilerArgsConfigurer implements Action<Task> {
 
 		private final Set<File> locations;
 
-		private AdditionalMetadataLocationsConfigurer(Set<File> locations) {
+		private final File descriptionCache;
+
+		private ConfigurationProcessorCompilerArgsConfigurer(Set<File> locations, File descriptionCache) {
 			this.locations = locations;
+			this.descriptionCache = descriptionCache;
 		}
 
 		@Override
@@ -354,6 +369,7 @@ final class JavaPluginAction implements PluginApplicationAction {
 			}
 			if (hasConfigurationProcessorOnClasspath(compile)) {
 				configureAdditionalMetadataLocations(compile);
+				configureDescriptionCacheLocation(compile);
 			}
 		}
 
@@ -370,6 +386,13 @@ final class JavaPluginAction implements PluginApplicationAction {
 				.getCompilerArgs()
 				.add("-Aorg.springframework.boot.configurationprocessor.additionalMetadataLocations="
 						+ StringUtils.collectionToCommaDelimitedString(this.locations));
+		}
+
+		private void configureDescriptionCacheLocation(JavaCompile compile) {
+			compile.getOptions()
+				.getCompilerArgs()
+				.add("-Aorg.springframework.boot.configurationprocessor.descriptionCacheLocation="
+						+ this.descriptionCache.getAbsolutePath());
 		}
 
 	}

@@ -43,6 +43,7 @@ import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
@@ -50,6 +51,7 @@ import org.gradle.api.tasks.options.Option;
 
 import org.springframework.boot.build.bom.BomExtension;
 import org.springframework.boot.build.bom.Library;
+import org.springframework.boot.build.bom.Library.LinkType;
 import org.springframework.boot.build.bom.UpgradePolicy;
 import org.springframework.boot.build.bom.bomr.github.GitHub;
 import org.springframework.boot.build.bom.bomr.github.GitHubRepository;
@@ -94,6 +96,11 @@ public abstract class UpgradeDependencies extends DefaultTask {
 
 	@Input
 	@Optional
+	@Option(option = "release-train", description = "Release train from which dependency versions should be resolved")
+	public abstract Property<String> getReleaseTrain();
+
+	@Input
+	@Optional
 	@Option(option = "threads", description = "Number of Threads to use for update resolution")
 	public abstract Property<Integer> getThreads();
 
@@ -109,11 +116,17 @@ public abstract class UpgradeDependencies extends DefaultTask {
 	public abstract Property<Boolean> getDryRun();
 
 	@Input
+	@Optional
+	@Option(option = "no-issues", description = "Whether to disable issue creation")
+	public abstract Property<Boolean> getNoIssues();
+
+	@Input
 	abstract ListProperty<String> getRepositoryNames();
 
 	@TaskAction
 	void upgradeDependencies() {
-		GitHubRepository repository = createGitHub().getRepository(this.bom.getUpgrade().getGitHub().getOrganization(),
+		GitHub gitHub = createGitHub("bomr.github.password");
+		GitHubRepository repository = gitHub.getRepository(this.bom.getUpgrade().getGitHub().getOrganization(),
 				this.bom.getUpgrade().getGitHub().getRepository());
 		List<String> issueLabels = verifyLabels(repository);
 		Milestone milestone = determineMilestone(repository);
@@ -138,15 +151,18 @@ public abstract class UpgradeDependencies extends DefaultTask {
 			Issue existingUpgradeIssue = findExistingUpgradeIssue(existingUpgradeIssues, upgrade);
 			try {
 				Path modified = this.upgradeApplicator.apply(upgrade);
-				String title = issueTitle(upgrade);
-				String body = issueBody(upgrade, existingUpgradeIssue);
-				int issueNumber = getOrOpenUpgradeIssue(repository, issueLabels, milestone, title, body,
-						existingUpgradeIssue);
-				if (existingUpgradeIssue != null && existingUpgradeIssue.getState() == Issue.State.CLOSED) {
-					existingUpgradeIssue.label(Arrays.asList("type: task", "status: superseded"));
+				Integer issueNumber = null;
+				if (!getNoIssues().getOrElse(Boolean.FALSE)) {
+					String title = issueTitle(upgrade);
+					String body = issueBody(upgrade, existingUpgradeIssue);
+					issueNumber = getOrOpenUpgradeIssue(repository, issueLabels, milestone, title, body,
+							existingUpgradeIssue);
+					if (existingUpgradeIssue != null && existingUpgradeIssue.getState() == Issue.State.CLOSED) {
+						existingUpgradeIssue.label(Arrays.asList("type: task", "status: superseded"));
+					}
+					System.out.println("   Issue: " + issueNumber + " - " + title
+							+ getExistingUpgradeIssueMessageDetails(existingUpgradeIssue));
 				}
-				System.out.println("   Issue: " + issueNumber + " - " + title
-						+ getExistingUpgradeIssueMessageDetails(existingUpgradeIssue));
 				if (new ProcessBuilder().command("git", "add", modified.toFile().getAbsolutePath())
 					.start()
 					.waitFor() != 0) {
@@ -156,7 +172,9 @@ public abstract class UpgradeDependencies extends DefaultTask {
 				if (new ProcessBuilder().command("git", "commit", "-m", commitMessage).start().waitFor() != 0) {
 					throw new IllegalStateException("git commit failed");
 				}
-				System.out.println("  Commit: " + commitMessage.substring(0, commitMessage.indexOf('\n')));
+				int newlineIndex = commitMessage.indexOf('\n');
+				System.out.println("  Commit: "
+						+ ((newlineIndex > -1) ? commitMessage.substring(0, newlineIndex) : commitMessage));
 			}
 			catch (IOException ex) {
 				throw new TaskExecutionException(this, ex);
@@ -198,12 +216,12 @@ public abstract class UpgradeDependencies extends DefaultTask {
 		return issueLabels;
 	}
 
-	private GitHub createGitHub() {
+	protected GitHub createGitHub(String passwordProperty) {
 		Properties bomrProperties = new Properties();
 		try (Reader reader = new FileReader(new File(System.getProperty("user.home"), ".bomr.properties"))) {
 			bomrProperties.load(reader);
 			String username = bomrProperties.getProperty("bomr.github.username");
-			String password = bomrProperties.getProperty("bomr.github.password");
+			String password = bomrProperties.getProperty(passwordProperty);
 			return GitHub.withCredentials(username, password);
 		}
 		catch (IOException ex) {
@@ -245,10 +263,15 @@ public abstract class UpgradeDependencies extends DefaultTask {
 	}
 
 	private LibraryUpdateResolver getLibraryUpdateResolver(Milestone milestone) {
-		VersionResolver versionResolver = new MavenMetadataVersionResolver(getRepositories());
+		VersionResolver versionResolver = getVersionResolver();
 		LibraryUpdateResolver libraryResolver = new StandardLibraryUpdateResolver(versionResolver,
 				createVersionOptionResolver(milestone));
 		return new MultithreadedLibraryUpdateResolver(getThreads().get(), libraryResolver);
+	}
+
+	@Internal
+	protected VersionResolver getVersionResolver() {
+		return new MavenMetadataVersionResolver(getRepositories());
 	}
 
 	private Collection<MavenArtifactRepository> getRepositories() {
@@ -281,11 +304,11 @@ public abstract class UpgradeDependencies extends DefaultTask {
 		UpgradePolicy libraryPolicy = library.getUpgradePolicy();
 		UpgradePolicy bomPolicy = this.bom.getUpgrade().getPolicy();
 		UpgradePolicy upgradePolicy = UpgradePolicy.max(libraryPolicy, bomPolicy);
-		return upgradePolicy.test(candidate, library.getVersion().getVersion());
+		return upgradePolicy.test(candidate, library.getVersion());
 	}
 
 	private boolean isAnUpgrade(Library library, DependencyVersion candidate) {
-		return library.getVersion().getVersion().isUpgrade(candidate, this.movingToSnapshots);
+		return library.getVersion().isUpgrade(candidate, this.movingToSnapshots);
 	}
 
 	private boolean isNotProhibited(Library library, DependencyVersion candidate) {
@@ -311,7 +334,7 @@ public abstract class UpgradeDependencies extends DefaultTask {
 		return libraryPredicate.test(library.getName());
 	}
 
-	protected abstract String commitMessage(Upgrade upgrade, int issueNumber);
+	protected abstract String commitMessage(Upgrade upgrade, Integer issueNumber);
 
 	protected String issueTitle(Upgrade upgrade) {
 		return "Upgrade to " + upgrade.toRelease().getNameAndVersion();
@@ -319,8 +342,8 @@ public abstract class UpgradeDependencies extends DefaultTask {
 
 	protected String issueBody(Upgrade upgrade, Issue existingUpgrade) {
 		String description = upgrade.toRelease().getNameAndVersion();
-		String releaseNotesLink = upgrade.toRelease().getLinkUrl("releaseNotes");
-		String body = (releaseNotesLink != null) ? "Upgrade to [%s](%s).".formatted(description, releaseNotesLink)
+		String releaseNotesLinkUrl = upgrade.toRelease().getLinkUrl(LinkType.RELEASE_NOTES);
+		String body = (releaseNotesLinkUrl != null) ? "Upgrade to [%s](%s).".formatted(description, releaseNotesLinkUrl)
 				: "Upgrade to %s.".formatted(description);
 		if (existingUpgrade != null) {
 			body += "\n\nSupersedes #" + existingUpgrade.getNumber();

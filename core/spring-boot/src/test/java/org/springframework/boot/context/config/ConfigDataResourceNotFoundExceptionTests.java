@@ -49,7 +49,6 @@ class ConfigDataResourceNotFoundExceptionTests {
 	private File missing;
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File temp;
 
 	@BeforeEach
@@ -80,12 +79,6 @@ class ConfigDataResourceNotFoundExceptionTests {
 				this.cause);
 		assertThat(exception.getResource()).isSameAs(this.resource);
 		assertThat(exception.getCause()).isSameAs(this.cause);
-	}
-
-	@Test
-	void getResourceReturnsResource() {
-		ConfigDataResourceNotFoundException exception = new ConfigDataResourceNotFoundException(this.resource);
-		assertThat(exception.getResource()).isSameAs(this.resource);
 	}
 
 	@Test

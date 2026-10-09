@@ -72,6 +72,7 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.jasper.servlet.JspServlet;
 import org.apache.tomcat.JarScanFilter;
 import org.apache.tomcat.JarScanType;
+import org.apache.tomcat.util.net.SSLHostConfig;
 import org.apache.tomcat.util.scan.StandardJarScanFilter;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.awaitility.Awaitility;
@@ -100,8 +101,6 @@ import org.springframework.boot.web.server.servlet.ConfigurableServletWebServerF
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.support.PropertiesLoaderUtils;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -109,7 +108,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -573,14 +572,15 @@ class TomcatServletWebServerFactoryTests extends AbstractServletWebServerFactory
 		assertThat(servletContext).isNotNull();
 		File temp = (File) servletContext.getAttribute(ServletContext.TEMPDIR);
 		FileSystemUtils.deleteRecursively(temp);
-		RestTemplate restTemplate = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
+		RestClient restClient = RestClient.create();
 		MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 		body.add("file", new ByteArrayResource(new byte[1024 * 1024]));
-		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-		HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-		ResponseEntity<String> response = restTemplate.postForEntity(getLocalUrl("/upload"), requestEntity,
-				String.class);
+		ResponseEntity<String> response = restClient.post()
+			.uri(getLocalUrl("/upload"))
+			.contentType(MediaType.MULTIPART_FORM_DATA)
+			.body(body)
+			.retrieve()
+			.toEntity(String.class);
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
@@ -699,6 +699,33 @@ class TomcatServletWebServerFactoryTests extends AbstractServletWebServerFactory
 		bundles.updateBundle("test", createPemSslBundle("classpath:2.crt", "classpath:2.key"));
 		assertThat(getResponse(getLocalUrl("https", "/test.txt"), requestFactory)).isEqualTo("test");
 		assertThat(verifier.getLastPrincipal()).isEqualTo("CN=2");
+	}
+
+	@Test
+	@WithPackageResources({ "1.crt", "1.key", "2.crt", "2.key" })
+	void shouldRetainSslHostConfigCustomizationsWhenReloadingSslBundles() throws Exception {
+		TomcatServletWebServerFactory factory = getFactory();
+		addTestTxtFile(factory);
+		DefaultSslBundleRegistry bundles = new DefaultSslBundleRegistry("test",
+				createPemSslBundle("classpath:1.crt", "classpath:1.key"));
+		factory.setSslBundles(bundles);
+		factory.setSsl(Ssl.forBundle("test"));
+		factory.addConnectorCustomizers((connector) -> {
+			if (connector.getProtocolHandler() instanceof AbstractHttp11Protocol<?> protocol) {
+				for (SSLHostConfig sslHostConfig : protocol.findSslHostConfigs()) {
+					sslHostConfig.setSessionTimeout(12345);
+				}
+			}
+		});
+		this.webServer = factory.getWebServer();
+		this.webServer.start();
+		bundles.updateBundle("test", createPemSslBundle("classpath:2.crt", "classpath:2.key"));
+		Connector connector = ((TomcatWebServer) this.webServer).getTomcat().getConnector();
+		AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) connector.getProtocolHandler();
+		assertThat(protocol.findSslHostConfigs()).hasSize(1);
+		SSLHostConfig sslHostConfig = protocol.findSslHostConfigs()[0];
+		assertThat(sslHostConfig.getSessionTimeout()).isEqualTo(12345);
+		assertThat(sslHostConfig.getCertificates()).hasSize(1);
 	}
 
 	@Test

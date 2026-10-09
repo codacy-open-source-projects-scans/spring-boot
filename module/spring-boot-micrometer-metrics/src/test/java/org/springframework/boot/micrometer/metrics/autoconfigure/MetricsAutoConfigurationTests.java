@@ -19,6 +19,7 @@ package org.springframework.boot.micrometer.metrics.autoconfigure;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.config.MeterFilterReply;
@@ -29,7 +30,6 @@ import io.micrometer.observation.ObservationHandler;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.micrometer.metrics.autoconfigure.MetricsAutoConfiguration.MeterRegistryCloser;
 import org.springframework.boot.micrometer.observation.autoconfigure.ObservationHandlerGroup;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
@@ -97,6 +97,33 @@ class MetricsAutoConfigurationTests {
 	}
 
 	@Test
+	void meterRegistryCloserShouldRemoveRegistryFromGlobalRegistryOnShutdown() {
+		this.contextRunner.withUserConfiguration(MeterRegistryConfiguration.class).run((context) -> {
+			MeterRegistry meterRegistry = context.getBean(MeterRegistry.class);
+			assertThat(Metrics.globalRegistry.getRegistries()).contains(meterRegistry);
+			context.close();
+			assertThat(Metrics.globalRegistry.getRegistries()).doesNotContain(meterRegistry);
+		});
+	}
+
+	@Test
+	void meterRegistryCloserShouldNotRemoveRegistryFromGlobalRegistryWhenUseGlobalRegistryIsFalse() {
+		this.contextRunner.withUserConfiguration(MeterRegistryConfiguration.class)
+			.withPropertyValues("management.metrics.use-global-registry=false")
+			.run((context) -> {
+				MeterRegistry meterRegistry = context.getBean(MeterRegistry.class);
+				Metrics.globalRegistry.add(meterRegistry);
+				try {
+					context.close();
+					assertThat(Metrics.globalRegistry.getRegistries()).contains(meterRegistry);
+				}
+				finally {
+					Metrics.globalRegistry.remove(meterRegistry);
+				}
+			});
+	}
+
+	@Test
 	void meterRegistryCloserShouldOnlyCloseRegistriesBelongingToContextBeingClosed() {
 		MeterRegistry parentMeterRegistry = new SimpleMeterRegistry();
 		MeterRegistry childMeterRegistry = new SimpleMeterRegistry();
@@ -126,19 +153,19 @@ class MetricsAutoConfigurationTests {
 	}
 
 	@Test
-	void shouldEnableLongTaskTimerByDefault() {
+	void shouldDisableLongTaskTimerByDefault() {
 		this.contextRunner.run((context) -> {
 			DefaultMeterObservationHandler handler = context.getBean(DefaultMeterObservationHandler.class);
-			assertThat(handler).hasFieldOrPropertyWithValue("shouldCreateLongTaskTimer", true);
+			assertThat(handler).hasFieldOrPropertyWithValue("includeActiveObservationLongTaskTimer", false);
 		});
 	}
 
 	@Test
-	void shouldDisableLongTaskTimerIfPropertyIsSet() {
-		this.contextRunner.withPropertyValues("management.metrics.observations.ignored-meters=long-task-timer")
+	void shouldEnableLongTaskTimerIfPropertyIsSet() {
+		this.contextRunner.withPropertyValues("management.metrics.observations.include-active-long-task-timer=true")
 			.run((context) -> {
 				DefaultMeterObservationHandler handler = context.getBean(DefaultMeterObservationHandler.class);
-				assertThat(handler).hasFieldOrPropertyWithValue("shouldCreateLongTaskTimer", false);
+				assertThat(handler).hasFieldOrPropertyWithValue("includeActiveObservationLongTaskTimer", true);
 			});
 	}
 

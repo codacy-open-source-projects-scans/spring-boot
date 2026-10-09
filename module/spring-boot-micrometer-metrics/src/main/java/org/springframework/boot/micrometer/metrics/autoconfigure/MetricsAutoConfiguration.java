@@ -23,7 +23,6 @@ import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
-import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler.IgnoredMeters;
 import io.micrometer.core.instrument.observation.MeterObservationHandler;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -34,9 +33,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.micrometer.observation.autoconfigure.ObservationHandlerGroup;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.core.annotation.Order;
 
 /**
@@ -64,9 +61,10 @@ public final class MetricsAutoConfiguration {
 	static MeterRegistryPostProcessor meterRegistryPostProcessor(ApplicationContext applicationContext,
 			ObjectProvider<MetricsProperties> metricsProperties,
 			ObjectProvider<MeterRegistryCustomizer<?>> meterRegistryCustomizers,
-			ObjectProvider<MeterFilter> meterFilters, ObjectProvider<MeterBinder> meterBinders) {
+			ObjectProvider<MeterFilter> meterFilters, ObjectProvider<MeterBinder> meterBinders,
+			ObjectProvider<MeterRegistryCloser> meterRegistryCloser) {
 		return new MeterRegistryPostProcessor(applicationContext, metricsProperties, meterRegistryCustomizers,
-				meterFilters, meterBinders);
+				meterFilters, meterBinders, meterRegistryCloser);
 	}
 
 	@Bean
@@ -89,36 +87,9 @@ public final class MetricsAutoConfiguration {
 	DefaultMeterObservationHandler defaultMeterObservationHandler(ObjectProvider<MeterRegistry> meterRegistryProvider,
 			Clock clock, MetricsProperties properties) {
 		MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable(() -> new CompositeMeterRegistry(clock));
-		return new DefaultMeterObservationHandler(meterRegistry,
-				properties.getObservations().getIgnoredMeters().toArray(IgnoredMeters[]::new));
-	}
-
-	/**
-	 * Ensures that {@link MeterRegistry meter registries} are closed early in the
-	 * shutdown process.
-	 */
-	static class MeterRegistryCloser implements ApplicationListener<ContextClosedEvent> {
-
-		private final ApplicationContext context;
-
-		private final Iterable<MeterRegistry> meterRegistries;
-
-		MeterRegistryCloser(ApplicationContext context) {
-			this.meterRegistries = context.getBeansOfType(MeterRegistry.class).values();
-			this.context = context;
-		}
-
-		@Override
-		public void onApplicationEvent(ContextClosedEvent event) {
-			if (this.context.equals(event.getApplicationContext())) {
-				for (MeterRegistry meterRegistry : this.meterRegistries) {
-					if (!meterRegistry.isClosed()) {
-						meterRegistry.close();
-					}
-				}
-			}
-		}
-
+		return DefaultMeterObservationHandler.builder(meterRegistry)
+			.includeActiveObservationLongTaskTimer(properties.getObservations().isIncludeActiveLongTaskTimer())
+			.build();
 	}
 
 }

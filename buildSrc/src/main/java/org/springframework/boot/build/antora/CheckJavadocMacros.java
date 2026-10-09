@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 the original author or authors.
+ * Copyright 2012-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ import org.springframework.asm.FieldVisitor;
 import org.springframework.asm.MethodVisitor;
 import org.springframework.asm.SpringAsmInfo;
 import org.springframework.asm.Type;
+import org.springframework.util.StringUtils;
 import org.springframework.util.function.ThrowingConsumer;
 
 /**
@@ -358,7 +359,7 @@ public abstract class CheckJavadocMacros extends DefaultTask {
 
 		@Override
 		public String toString() {
-			return this.name + "(" + String.join(", ", this.arguments + ")");
+			return this.name + "(" + String.join(", ", this.arguments) + ")";
 		}
 
 		static MethodAnchor of(String anchor, Origin origin) {
@@ -369,6 +370,7 @@ public abstract class CheckJavadocMacros extends DefaultTask {
 			String name = anchor.substring(0, openingIndex);
 			List<String> arguments = Stream.of(anchor.substring(openingIndex + 1, anchor.length() - 1).split(","))
 				.map(String::trim)
+				.filter(StringUtils::hasText)
 				.map((argument) -> argument.endsWith("...") ? argument.replace("...", "[]") : argument)
 				.toList();
 			return new MethodAnchor(name, arguments, origin);

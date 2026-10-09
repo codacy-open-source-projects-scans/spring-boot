@@ -75,6 +75,7 @@ class PaketoBuilderTests {
 		this.gradleBuild.expectDeprecationMessages("BPL_SPRING_CLOUD_BINDINGS_ENABLED.*true.*Deprecated");
 		this.gradleBuild.expectDeprecationMessages("Command \"packages\" is deprecated, use `syft scan` instead");
 		this.gradleBuild.expectDeprecationMessages("BP_ENABLE_RUNTIME_CERT_BINDING.*true.*Deprecated");
+		this.gradleBuild.expectDeprecationMessages("Warning: BOM table is deprecated in this buildpack api version");
 		this.gradleBuild.gradleVersion(GradleVersions.maximumCompatible());
 	}
 
@@ -91,6 +92,8 @@ class PaketoBuilderTests {
 			container.waitingFor(Wait.forHttp("/test")).start();
 			ContainerConfig config = container.getContainerInfo().getConfig();
 			assertLabelsMatchManifestAttributes(config);
+			assertThat(config.getLabels()).containsEntry("io.buildpacks.stack.id",
+					"io.buildpacks.stacks.resolute.tiny");
 			ImageAssertions.assertThat(config).buildMetadata((metadata) -> {
 				metadata.buildpacks()
 					.contains("paketo-buildpacks/ca-certificates", "paketo-buildpacks/bellsoft-liberica",

@@ -104,6 +104,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
@@ -251,7 +252,7 @@ class HibernateJpaAutoConfigurationTests {
 	}
 
 	@Test
-	void whenBackgroundBootstrapingAndSingleAsyncTaksExecutorConfiguresBackgroundExecutor() {
+	void whenBackgroundBootstrappingAndSingleAsyncTaskExecutorConfiguresBackgroundExecutor() {
 		this.contextRunner.withPropertyValues("spring.jpa.bootstrap=async")
 			.withUserConfiguration(SingleAsyncTaskExecutorConfiguration.class)
 			.run((context) -> assertThat(
@@ -260,7 +261,7 @@ class HibernateJpaAutoConfigurationTests {
 	}
 
 	@Test
-	void whenBackgroundBootstrapingAndApplicationTaksExecutorConfiguresBackgroundExecutor() {
+	void whenBackgroundBootstrappingAndApplicationTaskExecutorConfiguresBackgroundExecutor() {
 		this.contextRunner.withPropertyValues("spring.jpa.bootstrap=async")
 			.withUserConfiguration(MultipleAsyncTaskExecutorsConfiguration.class,
 					ApplicationTaskExecutorConfiguration.class)
@@ -270,7 +271,7 @@ class HibernateJpaAutoConfigurationTests {
 	}
 
 	@Test
-	void whenBackgroundBootstrapingAndMissingTaksExecutorThrowsException() {
+	void whenBackgroundBootstrappingAndMissingTaskExecutorThrowsException() {
 		this.contextRunner.withPropertyValues("spring.jpa.bootstrap=async")
 			.run((context) -> assertThat(context).getFailure()
 				.rootCause()
@@ -280,7 +281,7 @@ class HibernateJpaAutoConfigurationTests {
 	}
 
 	@Test
-	void whenBackgroundBootstrapingAndMultipleTaksExecutorThrowsException() {
+	void whenBackgroundBootstrappingAndMultipleTaskExecutorThrowsException() {
 		this.contextRunner.withPropertyValues("spring.jpa.bootstrap=async")
 			.withUserConfiguration(MultipleAsyncTaskExecutorsConfiguration.class)
 			.run((context) -> assertThat(context).getFailure()
@@ -291,7 +292,7 @@ class HibernateJpaAutoConfigurationTests {
 	}
 
 	@Test
-	void whenBackgroundBootstrapingAndCustomizedBackgroundExecutorThrowsException() {
+	void whenBackgroundBootstrappingAndCustomizedBackgroundExecutorThrowsException() {
 		this.contextRunner.withPropertyValues("spring.jpa.bootstrap=async")
 			.withBean(EntityManagerFactoryBuilderCustomizer.class, this::bootstrapExecutorCustomizer)
 			.run((context) -> assertThat(
@@ -301,6 +302,15 @@ class HibernateJpaAutoConfigurationTests {
 
 	private EntityManagerFactoryBuilderCustomizer bootstrapExecutorCustomizer() {
 		return (builder) -> builder.setBootstrapExecutor(new SimpleAsyncTaskExecutor());
+	}
+
+	@Test
+	void whenAsyncTaskExecutorIsDefinedInJpaDependentConfigurationDoesNotFail() {
+		this.contextRunner.withUserConfiguration(TaskExecutorDependingOnEntityManagerFactoryConfiguration.class)
+			.run((context) -> {
+				assertThat(context).hasNotFailed();
+				assertThat(context).hasSingleBean(EntityManagerFactory.class).hasSingleBean(AsyncTaskExecutor.class);
+			});
 	}
 
 	@Test
@@ -1469,6 +1479,19 @@ class HibernateJpaAutoConfigurationTests {
 
 		@Bean
 		SimpleAsyncTaskExecutor applicationTaskExecutor() {
+			return new SimpleAsyncTaskExecutor();
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class TaskExecutorDependingOnEntityManagerFactoryConfiguration {
+
+		TaskExecutorDependingOnEntityManagerFactoryConfiguration(EntityManagerFactory entityManagerFactory) {
+		}
+
+		@Bean
+		SimpleAsyncTaskExecutor exampleTaskExecutor() {
 			return new SimpleAsyncTaskExecutor();
 		}
 

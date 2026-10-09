@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -54,9 +54,7 @@ dependencies {
 	optional("io.micrometer:micrometer-registry-new-relic")
 	optional("io.micrometer:micrometer-registry-otlp")
 	optional("io.micrometer:micrometer-registry-prometheus")
-	optional("io.micrometer:micrometer-registry-stackdriver") {
-		exclude group: "javax.annotation", module: "javax.annotation-api"
-	}
+	optional("io.micrometer:micrometer-registry-stackdriver")
 	optional("io.micrometer:micrometer-registry-statsd")
 	optional("io.prometheus:prometheus-metrics-exporter-pushgateway")
 	optional("org.apache.kafka:kafka-streams")

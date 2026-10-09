@@ -101,14 +101,26 @@ In that case you can either disable the automatic instrumentation using xref:ref
 
 
 
+[[actuator.observability.semantic-conventions]]
+== Semantic Conventions
+
+Semantic conventions govern things like metric names and tag names and values.
+By default, the conventions defined by Micrometer and the various Spring projects are used.
+To switch to OpenTelemetry's conventions, set configprop:management.observations.conventions[] to `open-telemetry`.
+OpenTelemetry conventions are limited to those that are stable.
+When using OpenTelemetry's conventions, note that certain properties for customizing meter names and the like will no longer take effect.
+
+
+
 [[actuator.observability.opentelemetry]]
 == OpenTelemetry Support
 
 NOTE: There are several ways to support https://opentelemetry.io/[OpenTelemetry] in your application.
 You can use the https://opentelemetry.io/docs/zero-code/java/agent/[OpenTelemetry Java Agent] or the https://opentelemetry.io/docs/zero-code/java/spring-boot-starter/[OpenTelemetry Spring Boot Starter],
-which are supported by the OTel community; the metrics and traces use the semantic conventions defined by OTel libraries.
-This documentation describes OpenTelemetry as officially supported by the Spring team, using Micrometer and the OTLP exporter;
-the metrics and traces use the semantic conventions described in the Spring projects documentation, such as {url-spring-framework-docs}/integration/observability.html[Spring Framework].
+which are supported by the OTel community.
+In this case, the metrics and traces always use the semantic conventions defined by OTel libraries.
+This documentation describes OpenTelemetry as officially supported by the Spring team, using Micrometer and the OTLP exporter.
+In this case, the metrics and traces use the semantic conventions described in the Spring projects documentation, such as {url-spring-framework-docs}/integration/observability.html[Spring Framework], but can be <<actuator.observability.semantic-conventions, configured>> to use OpenTelemetry's stable conventions.
 
 Spring Boot's actuator module includes basic support for OpenTelemetry.
 
@@ -133,6 +145,30 @@ This behaves similarly to the https://opentelemetry.io/docs/specs/otel/configura
 Context propagators are not affected and continue to function normally.
 
 NOTE: Keep in mind that Spring Boot doesn't use OpenTelemetry's metrics functionality, so metrics might still be enabled even when disabling OpenTelemetry.
+
+
+
+[[actuator.observability.opentelemetry.common-otlp-configuration]]
+=== Common OTLP Configuration
+
+The endpoint, headers, and compression used to export traces, logs, and metrics over OTLP can be configured once for all three signals using the `management.opentelemetry.otlp.*` configuration properties:
+
+[configprops,yaml]
+----
+management:
+  opentelemetry:
+    otlp:
+      endpoint: "https://otlp.example.com:4318"
+      compression: "gzip"
+      headers:
+        Authorization: "Bearer some-token"
+----
+
+Each signal-specific property, for example configprop:management.opentelemetry.tracing.export.otlp.endpoint[], configprop:management.opentelemetry.logging.export.otlp.endpoint[], or configprop:management.otlp.metrics.export.url[], takes precedence over the common one when set.
+When the common endpoint is used as a fallback and the signal is exported over HTTP, the signal-specific path (`v1/traces`, `v1/logs`, or `v1/metrics`) is appended to it, as in the example above.
+Headers configured for a specific signal are merged with the common headers, with the signal-specific values taking precedence for any matching keys.
+
+This mirrors the fallback behavior of the general and signal-specific `OTEL_EXPORTER_OTLP_*` environment variables described below.
 
 
 

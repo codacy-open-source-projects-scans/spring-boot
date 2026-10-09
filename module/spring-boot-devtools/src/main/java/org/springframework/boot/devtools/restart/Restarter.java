@@ -357,11 +357,11 @@ public class Restarter {
 			Field field = type.getDeclaredField(fieldName);
 			field.setAccessible(true);
 			Object instance = field.get(null);
-			if (instance instanceof Set) {
-				((Set<?>) instance).clear();
+			if (instance instanceof Set<?> set) {
+				set.clear();
 			}
-			if (instance instanceof Map) {
-				((Map<?, ?>) instance).keySet().removeIf(this::isFromRestartClassLoader);
+			if (instance instanceof Map<?, ?> map) {
+				map.keySet().removeIf(this::isFromRestartClassLoader);
 			}
 		}
 		catch (Exception ex) {
@@ -371,8 +371,9 @@ public class Restarter {
 		}
 	}
 
-	private boolean isFromRestartClassLoader(Object object) {
-		return (object instanceof Class && ((Class<?>) object).getClassLoader() instanceof RestartClassLoader);
+	private boolean isFromRestartClassLoader(Object candidate) {
+		return (candidate instanceof Class<?> candidateClass
+				&& candidateClass.getClassLoader() instanceof RestartClassLoader);
 	}
 
 	/**
@@ -450,7 +451,7 @@ public class Restarter {
 		return value;
 	}
 
-	public Object removeAttribute(String name) {
+	public @Nullable Object removeAttribute(String name) {
 		return this.attributes.remove(name);
 	}
 

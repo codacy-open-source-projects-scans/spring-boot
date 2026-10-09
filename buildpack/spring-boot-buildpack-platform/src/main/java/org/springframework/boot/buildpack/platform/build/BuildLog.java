@@ -136,6 +136,16 @@ public interface BuildLog {
 	void sensitiveTargetBindingDetected(Binding binding);
 
 	/**
+	 * Log that the OS distribution of the run image does not match the OS distribution of
+	 * the builder image.
+	 * @param runImageDistro the OS distribution of the run image
+	 * @param builderImageDistro the OS distribution of the builder image
+	 * @since 4.0.9
+	 */
+	default void distrosDoNotMatch(String runImageDistro, String builderImageDistro) {
+	}
+
+	/**
 	 * Factory method that returns a {@link BuildLog} the outputs to {@link System#out}.
 	 * @return a build log instance that logs to system out
 	 */

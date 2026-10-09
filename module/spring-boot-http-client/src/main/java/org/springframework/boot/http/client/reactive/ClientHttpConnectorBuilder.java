@@ -68,6 +68,7 @@ public interface ClientHttpConnectorBuilder<T extends ClientHttpConnector> {
 	 * @return a new {@link ClientHttpConnectorBuilder} instance
 	 */
 	default ClientHttpConnectorBuilder<T> withCustomizer(Consumer<T> customizer) {
+		Assert.notNull(customizer, "'customizer' must not be null");
 		return withCustomizers(List.of(customizer));
 	}
 
@@ -126,7 +127,7 @@ public interface ClientHttpConnectorBuilder<T extends ClientHttpConnector> {
 
 	/**
 	 * Return a new {@link ClientHttpConnectorBuilder} for the given
-	 * {@code requestFactoryType}. The following implementations are supported:
+	 * {@code clientHttpConnectorType}. The following implementations are supported:
 	 * <ul>
 	 * <li>{@link ReactorClientHttpConnector}</li>
 	 * <li>{@link JettyClientHttpConnector}</li>
@@ -139,7 +140,7 @@ public interface ClientHttpConnectorBuilder<T extends ClientHttpConnector> {
 	 */
 	@SuppressWarnings("unchecked")
 	static <T extends ClientHttpConnector> ClientHttpConnectorBuilder<T> of(Class<T> clientHttpConnectorType) {
-		Assert.notNull(clientHttpConnectorType, "'requestFactoryType' must not be null");
+		Assert.notNull(clientHttpConnectorType, "'clientHttpConnectorType' must not be null");
 		Assert.isTrue(clientHttpConnectorType != ClientHttpConnector.class,
 				"'clientHttpConnectorType' must be an implementation of ClientHttpConnector");
 		if (clientHttpConnectorType == ReactorClientHttpConnector.class) {

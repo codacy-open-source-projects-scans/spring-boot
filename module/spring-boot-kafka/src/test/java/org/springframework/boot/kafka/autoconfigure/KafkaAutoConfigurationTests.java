@@ -475,6 +475,7 @@ class KafkaAutoConfigurationTests {
 				assertThat(factoryBean.isAutoStartup()).isFalse();
 				assertThat(factoryBean).extracting("cleanupConfig.onStart").isEqualTo(true);
 				assertThat(factoryBean).extracting("cleanupConfig.onStop").isEqualTo(true);
+				assertThat(factoryBean).extracting("leaveGroupOnClose").isEqualTo(false);
 				factoryBean.addListener(listener);
 			})
 			.withPropertyValues("spring.kafka.client-id=cid",
@@ -697,6 +698,19 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Test
+	void streamsWithLeaveGroupOnClose() {
+		this.contextRunner
+			.withUserConfiguration(EnableKafkaStreamsConfiguration.class, TestKafkaStreamsConfiguration.class)
+			.withPropertyValues("spring.application.name=my-test-app",
+					"spring.kafka.bootstrap-servers=localhost:9092,localhost:9093",
+					"spring.kafka.streams.auto-startup=false", "spring.kafka.streams.leave-group-on-close=true")
+			.run((context) -> {
+				StreamsBuilderFactoryBean streamsBuilderFactoryBean = context.getBean(StreamsBuilderFactoryBean.class);
+				assertThat(streamsBuilderFactoryBean).extracting("leaveGroupOnClose").isEqualTo(true);
+			});
+	}
+
+	@Test
 	void streamsApplicationIdIsMandatory() {
 		this.contextRunner.withUserConfiguration(EnableKafkaStreamsConfiguration.class).run((context) -> {
 			assertThat(context).hasFailed();
@@ -765,11 +779,30 @@ class KafkaAutoConfigurationTests {
 				"spring.kafka.template.allow-non-transactional=true", "spring.kafka.template.observation-enabled=true")
 			.run((context) -> {
 				KafkaTemplate<?, ?> kafkaTemplate = context.getBean(KafkaTemplate.class);
+				assertThat(kafkaTemplate.getKafkaAdmin()).isSameAs(context.getBean(KafkaAdmin.class));
 				assertThat(kafkaTemplate.getDefaultTopic()).isEqualTo("testTopic");
 				assertThat(kafkaTemplate).hasFieldOrPropertyWithValue("transactionIdPrefix", "txOverride");
 				assertThat(kafkaTemplate).hasFieldOrPropertyWithValue("closeTimeout", Duration.ofMinutes(3));
 				assertThat(kafkaTemplate.isAllowNonTransactional()).isTrue();
 				assertThat(kafkaTemplate).hasFieldOrPropertyWithValue("observationEnabled", true);
+			});
+	}
+
+	@Test
+	void templatePropertiesWithAdmin() {
+		this.contextRunner
+			.withPropertyValues("spring.kafka.template.admin.client-id=template",
+					"spring.kafka.template.admin.operation-timeout=2m",
+					"spring.kafka.template.admin.properties.fiz.buz=fix.fox")
+			.run((context) -> {
+				KafkaTemplate<?, ?> kafkaTemplate = context.getBean(KafkaTemplate.class);
+				assertThat(kafkaTemplate.getKafkaAdmin()).satisfies((kafkaAdmin) -> {
+					assertThat(kafkaAdmin).isNotSameAs(context.getBean(KafkaAdmin.class));
+					assertThat(kafkaAdmin.getConfigurationProperties())
+						.containsEntry(AdminClientConfig.CLIENT_ID_CONFIG, "template")
+						.containsEntry("fiz.buz", "fix.fox");
+					assertThat(kafkaAdmin.getOperationTimeout()).isEqualTo(120);
+				});
 			});
 	}
 
@@ -788,11 +821,13 @@ class KafkaAutoConfigurationTests {
 					"spring.kafka.listener.immediate-stop=true", "spring.kafka.producer.transaction-id-prefix=foo",
 					"spring.kafka.jaas.login-module=foo", "spring.kafka.jaas.control-flag=REQUISITE",
 					"spring.kafka.jaas.options.useKeyTab=true", "spring.kafka.listener.async-acks=true",
-					"spring.kafka.listener.observation-enabled=true")
+					"spring.kafka.listener.observation-enabled=true",
+					"spring.kafka.listener.await-async-results-on-stop=true")
 			.run((context) -> {
 				DefaultKafkaProducerFactory<?, ?> producerFactory = context.getBean(DefaultKafkaProducerFactory.class);
 				DefaultKafkaConsumerFactory<?, ?> consumerFactory = context.getBean(DefaultKafkaConsumerFactory.class);
 				KafkaTemplate<?, ?> kafkaTemplate = context.getBean(KafkaTemplate.class);
+				assertThat(kafkaTemplate.getKafkaAdmin()).isNull();
 				assertThat(kafkaTemplate).hasFieldOrPropertyWithValue("producerFactory", producerFactory);
 				AbstractKafkaListenerContainerFactory<?, ?, ?> kafkaListenerContainerFactory = (AbstractKafkaListenerContainerFactory<?, ?, ?>) context
 					.getBean(KafkaListenerContainerFactory.class);
@@ -813,6 +848,7 @@ class KafkaAutoConfigurationTests {
 				assertThat(containerProperties.isLogContainerConfig()).isTrue();
 				assertThat(containerProperties.isMissingTopicsFatal()).isTrue();
 				assertThat(containerProperties.isStopImmediate()).isTrue();
+				assertThat(containerProperties.isAwaitAsyncResultsOnStop()).isTrue();
 				assertThat(containerProperties.isObservationEnabled()).isTrue();
 				assertThat(kafkaListenerContainerFactory).extracting("concurrency").isEqualTo(3);
 				assertThat(kafkaListenerContainerFactory.isBatchListener()).isTrue();
@@ -825,6 +861,25 @@ class KafkaAutoConfigurationTests {
 				assertThat(context.getBeansOfType(KafkaTransactionManager.class)).hasSize(1);
 				assertThat(((Map<String, String>) ReflectionTestUtils.getField(jaas, "options")))
 					.containsExactly(entry("useKeyTab", "true"));
+			});
+	}
+
+	@Test
+	void listenerPropertiesWithAdmin() {
+		this.contextRunner
+			.withPropertyValues("spring.kafka.listener.admin.client-id=listener",
+					"spring.kafka.listener.admin.operation-timeout=2m",
+					"spring.kafka.listener.admin.properties.fiz.buz=fix.fox")
+			.run((context) -> {
+				ConcurrentKafkaListenerContainerFactory<?, ?> factory = context
+					.getBean(ConcurrentKafkaListenerContainerFactory.class);
+				ConcurrentMessageListenerContainer<?, ?> container = factory.createContainer("someTopic");
+				assertThat(container.getKafkaAdmin()).satisfies((kafkaAdmin) -> {
+					assertThat(kafkaAdmin.getConfigurationProperties())
+						.containsEntry(AdminClientConfig.CLIENT_ID_CONFIG, "listener")
+						.containsEntry("fiz.buz", "fix.fox");
+					assertThat(kafkaAdmin.getOperationTimeout()).isEqualTo(120);
+				});
 			});
 	}
 
@@ -1023,7 +1078,37 @@ class KafkaAutoConfigurationTests {
 	}
 
 	@Test
-	void specificSecurityProtocolOverridesCommonSecurityProtocol() {
+	void specificProducerSecurityProtocolOverridesCommonSecurityProtocol() {
+		this.contextRunner
+			.withPropertyValues("spring.kafka.security.protocol=SSL",
+					"spring.kafka.producer.security.protocol=PLAINTEXT")
+			.run((context) -> {
+				DefaultKafkaConsumerFactory<?, ?> consumerFactory = context.getBean(DefaultKafkaConsumerFactory.class);
+				Map<String, Object> consumerConfigs = consumerFactory.getConfigurationProperties();
+				assertThat(consumerConfigs).containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+				DefaultKafkaProducerFactory<?, ?> producerFactory = context.getBean(DefaultKafkaProducerFactory.class);
+				Map<String, Object> producerConfigs = producerFactory.getConfigurationProperties();
+				assertThat(producerConfigs).containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT");
+			});
+	}
+
+	@Test
+	void specificConsumerSecurityProtocolOverridesCommonSecurityProtocol() {
+		this.contextRunner
+			.withPropertyValues("spring.kafka.security.protocol=SSL",
+					"spring.kafka.consumer.security.protocol=PLAINTEXT")
+			.run((context) -> {
+				DefaultKafkaProducerFactory<?, ?> producerFactory = context.getBean(DefaultKafkaProducerFactory.class);
+				Map<String, Object> producerConfigs = producerFactory.getConfigurationProperties();
+				assertThat(producerConfigs).containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
+				DefaultKafkaConsumerFactory<?, ?> consumerFactory = context.getBean(DefaultKafkaConsumerFactory.class);
+				Map<String, Object> consumerConfigs = consumerFactory.getConfigurationProperties();
+				assertThat(consumerConfigs).containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT");
+			});
+	}
+
+	@Test
+	void specificAdminSecurityProtocolOverridesCommonSecurityProtocol() {
 		this.contextRunner
 			.withPropertyValues("spring.kafka.security.protocol=SSL", "spring.kafka.admin.security.protocol=PLAINTEXT")
 			.run((context) -> {

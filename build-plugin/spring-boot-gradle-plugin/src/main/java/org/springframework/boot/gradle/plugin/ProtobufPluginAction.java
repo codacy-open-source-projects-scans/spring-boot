@@ -33,7 +33,6 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.DependencyResolveDetails;
 import org.gradle.api.artifacts.ModuleVersionSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
-import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.jspecify.annotations.Nullable;
 
@@ -42,6 +41,7 @@ import org.jspecify.annotations.Nullable;
  * applied.
  *
  * @author Andy Wilkinson
+ * @author Dongliang Xie
  */
 final class ProtobufPluginAction implements PluginApplicationAction {
 
@@ -50,7 +50,7 @@ final class ProtobufPluginAction implements PluginApplicationAction {
 	private static final Dependency grpcDependency = new Dependency("io.grpc", "protoc-gen-grpc-java");
 
 	private static final List<VersionAlignment> versionAlignment = List.of(
-			protocDependency.alignVersionWith("com.google.protobuf", "protobuf-java-util"),
+			protocDependency.alignVersionWith("com.google.protobuf", "protobuf-java"),
 			grpcDependency.alignVersionWith("io.grpc", "grpc-util"));
 
 	@Override
@@ -62,8 +62,7 @@ final class ProtobufPluginAction implements PluginApplicationAction {
 	public void execute(Project project) {
 		ProtobufExtension protobuf = project.getExtensions().getByType(ProtobufExtension.class);
 		protobuf.protoc(this::configureProtoc);
-		protobuf.plugins(this::configurePlugins);
-		protobuf.generateProtoTasks(this::configureGenerateProtoTasks);
+		protobuf.plugins((plugins) -> configurePlugins(plugins, protobuf));
 		project.getConfigurations()
 			.named(this::isProtobufToolsLocator)
 			.configureEach((configuration) -> configureProtobufToolsLocator(project, configuration));
@@ -73,8 +72,11 @@ final class ProtobufPluginAction implements PluginApplicationAction {
 		protoc.setArtifact(protocDependency.asDependencySpec());
 	}
 
-	private ExecutableLocator configurePlugins(NamedDomainObjectContainer<ExecutableLocator> plugins) {
-		return plugins.create("grpc", (grpc) -> grpc.setArtifact(grpcDependency.asDependencySpec()));
+	private void configurePlugins(NamedDomainObjectContainer<ExecutableLocator> plugins, ProtobufExtension protobuf) {
+		plugins.matching((plugin) -> "grpc".equals(plugin.getName())).configureEach((grpc) -> {
+			grpc.setArtifact(grpcDependency.asDependencySpec());
+			protobuf.generateProtoTasks(this::configureGenerateProtoTasks);
+		});
 	}
 
 	private void configureGenerateProtoTasks(GenerateProtoTaskCollection tasks) {
@@ -141,9 +143,8 @@ final class ProtobufPluginAction implements PluginApplicationAction {
 				.getByName("runtimeClasspath")
 				.getIncoming()
 				.getResolutionResult()
-				.getAllDependencies()
+				.getAllComponents()
 				.stream()
-				.map(DependencyResult::getFrom)
 				.map(ResolvedComponentResult::getId)
 				.filter(ModuleComponentIdentifier.class::isInstance)
 				.map(ModuleComponentIdentifier.class::cast)

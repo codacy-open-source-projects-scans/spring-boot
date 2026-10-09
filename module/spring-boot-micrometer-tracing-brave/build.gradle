@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -28,9 +28,7 @@ dependencies {
 	api(project(":core:spring-boot"))
 	api(project(":module:spring-boot-micrometer-observation"))
 	api(project(":module:spring-boot-micrometer-tracing"))
-	api("io.micrometer:micrometer-tracing") {
-		exclude(group: "aopalliance", module: "aopalliance")
-	}
+	api("io.micrometer:micrometer-tracing")
 	optional(project(":core:spring-boot-autoconfigure"))
 	optional(project(":module:spring-boot-zipkin"))
 	optional("io.micrometer:micrometer-tracing-bridge-brave")

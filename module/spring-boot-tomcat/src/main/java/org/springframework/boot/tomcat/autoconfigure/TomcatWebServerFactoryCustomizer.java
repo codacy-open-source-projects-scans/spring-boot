@@ -274,13 +274,7 @@ public class TomcatWebServerFactoryCustomizer
 			valve.setTrustedProxies(remoteIpProperties.getTrustedProxies());
 			// The internal proxies default to a list of "safe" internal IP addresses
 			valve.setInternalProxies(remoteIpProperties.getInternalProxies());
-			try {
-				valve.setHostHeader(remoteIpProperties.getHostHeader());
-			}
-			catch (NoSuchMethodError ex) {
-				// Avoid failure with war deployments to Tomcat 8.5 before 8.5.44 and
-				// Tomcat 9 before 9.0.23
-			}
+			valve.setHostHeader(remoteIpProperties.getHostHeader());
 			valve.setPortHeader(remoteIpProperties.getPortHeader());
 			valve.setProtocolHeaderHttpsValue(remoteIpProperties.getProtocolHeaderHttpsValue());
 			// ... so it's safe to add this valve by default.
@@ -320,7 +314,7 @@ public class TomcatWebServerFactoryCustomizer
 			Class<T> type, ObjIntConsumer<T> consumer) {
 		factory.addConnectorCustomizers((connector) -> {
 			ProtocolHandler handler = connector.getProtocolHandler();
-			if (type.isAssignableFrom(handler.getClass())) {
+			if (type.isInstance(handler)) {
 				consumer.accept(type.cast(handler), value);
 			}
 		});

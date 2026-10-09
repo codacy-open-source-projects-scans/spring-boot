@@ -3,7 +3,6 @@
 
 Spring Boot Actuator provides dependency management and auto-configuration for {url-micrometer-site}[Micrometer], an application metrics facade that supports {url-micrometer-docs}[numerous monitoring systems], including:
 
-- xref:actuator/metrics.adoc#actuator.metrics.export.appoptics[]
 - xref:actuator/metrics.adoc#actuator.metrics.export.atlas[]
 - xref:actuator/metrics.adoc#actuator.metrics.export.datadog[]
 - xref:actuator/metrics.adoc#actuator.metrics.export.dynatrace[]
@@ -64,6 +63,9 @@ management:
     use-global-registry: false
 ----
 
+NOTE: In tests that use `spring-boot-micrometer-metrics-test`, the global registry is disabled by default.
+If you want to use the global registry in such a test, annotate it with javadoc:org.springframework.boot.micrometer.metrics.test.autoconfigure.AutoConfigureMetrics[format=annotation] using `useGlobalRegistry = true`, or set the configprop:management.metrics.use-global-registry[] property explicitly to `true`.
+
 You can register any number of javadoc:org.springframework.boot.micrometer.metrics.autoconfigure.MeterRegistryCustomizer[] beans to further configure the registry, such as applying common tags, before any meters are registered with the registry:
 
 include-code::commontags/MyMeterRegistryConfiguration[]
@@ -80,23 +82,6 @@ Spring Boot also xref:actuator/metrics.adoc#actuator.metrics.supported[configure
 == Supported Monitoring Systems
 
 This section briefly describes each of the supported monitoring systems.
-
-
-
-[[actuator.metrics.export.appoptics]]
-=== AppOptics
-
-By default, the AppOptics registry periodically pushes metrics to `https://api.appoptics.com/v1/measurements`.
-To export metrics to SaaS {url-micrometer-docs-implementations}/appOptics[AppOptics], your API token must be provided:
-
-[configprops,yaml]
-----
-management:
-  appoptics:
-    metrics:
-      export:
-        api-token: "YOUR_TOKEN"
-----
 
 
 
@@ -746,7 +731,8 @@ NOTE: javadoc:org.springframework.jms.core.JmsClient[] and javadoc:org.springfra
 
 Auto-configuration enables the instrumentation of all requests handled by Spring MVC controllers and functional handlers.
 By default, metrics are generated with the name, `http.server.requests`.
-You can customize the name by setting the configprop:management.observations.http.server.requests.name[] property.
+If you are xref:actuator/observability.adoc#actuator.observability.semantic-conventions[using Micrometer's semantic conventions], set the configprop:management.observations.http.server.requests.name[] property to customize the name.
+If you are using OpenTelemtry's semantic conventions, the name cannot be customized.
 
 See the {url-spring-framework-docs}/integration/observability.html#observability.http-server.servlet[Spring Framework reference documentation for more information on produced observations].
 
@@ -766,7 +752,8 @@ To customize the filter, provide a javadoc:org.springframework.context.annotatio
 
 Auto-configuration enables the instrumentation of all requests handled by Spring WebFlux controllers and functional handlers.
 By default, metrics are generated with the name, `http.server.requests`.
-You can customize the name by setting the configprop:management.observations.http.server.requests.name[] property.
+If you are xref:actuator/observability.adoc#actuator.observability.semantic-conventions[using Micrometer's semantic conventions], set the configprop:management.observations.http.server.requests.name[] property to customize the name.
+If you are using OpenTelemtry's semantic conventions, the name cannot be customized.
 
 See the {url-spring-framework-docs}/integration/observability.html#observability.http-server.reactive[Spring Framework reference documentation for more information on produced observations].
 
@@ -840,21 +827,20 @@ This metric is tagged with the following information:
 [[actuator.metrics.supported.http-clients]]
 === HTTP Client Metrics
 
-Spring Boot Actuator manages the instrumentation of javadoc:org.springframework.web.client.RestTemplate[], javadoc:org.springframework.web.reactive.function.client.WebClient[] and javadoc:org.springframework.web.client.RestClient[].
+Spring Boot Actuator manages the instrumentation of javadoc:org.springframework.web.reactive.function.client.WebClient[] and javadoc:org.springframework.web.client.RestClient[].
 For that, you have to inject the auto-configured builder and use it to create instances:
 
-* javadoc:org.springframework.boot.restclient.RestTemplateBuilder[] for javadoc:org.springframework.web.client.RestTemplate[]
 * javadoc:org.springframework.web.reactive.function.client.WebClient$Builder[] for javadoc:org.springframework.web.reactive.function.client.WebClient[]
 * javadoc:org.springframework.web.client.RestClient$Builder[] for javadoc:org.springframework.web.client.RestClient[]
 
-You can also manually apply the customizers responsible for this instrumentation, namely javadoc:org.springframework.boot.restclient.observation.ObservationRestTemplateCustomizer[], javadoc:org.springframework.boot.webclient.observation.ObservationWebClientCustomizer[] and javadoc:org.springframework.boot.restclient.observation.ObservationRestClientCustomizer[].
+You can also manually apply the customizers responsible for this instrumentation, namely javadoc:org.springframework.boot.webclient.observation.ObservationWebClientCustomizer[] and javadoc:org.springframework.boot.restclient.observation.ObservationRestClientCustomizer[].
 
 By default, metrics are generated with the name, `http.client.requests`.
 You can customize the name by setting the configprop:management.observations.http.client.requests.name[] property.
 
 See the {url-spring-framework-docs}/integration/observability.html#observability.http-client[Spring Framework reference documentation for more information on produced observations].
 
-To customize the tags when using javadoc:org.springframework.web.client.RestTemplate[] or javadoc:org.springframework.web.client.RestClient[], provide a javadoc:org.springframework.context.annotation.Bean[format=annotation] that implements javadoc:org.springframework.http.client.observation.ClientRequestObservationConvention[] from the `org.springframework.http.client.observation` package.
+To customize the tags when using javadoc:org.springframework.web.client.RestClient[], provide a javadoc:org.springframework.context.annotation.Bean[format=annotation] that implements javadoc:org.springframework.http.client.observation.ClientRequestObservationConvention[] from the `org.springframework.http.client.observation` package.
 To customize the tags when using javadoc:org.springframework.web.reactive.function.client.WebClient[], provide a javadoc:org.springframework.context.annotation.Bean[format=annotation] that implements javadoc:org.springframework.web.reactive.function.client.ClientRequestObservationConvention[] from the `org.springframework.web.reactive.function.client` package.
 
 

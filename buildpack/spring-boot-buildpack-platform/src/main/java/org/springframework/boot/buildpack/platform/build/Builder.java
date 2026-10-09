@@ -120,7 +120,7 @@ public class Builder {
 			request = request.withRunImage(request.getRunImage().withDigest(runImage.getPrimaryDigest()));
 			runImage = imageFetcher.fetchImage(ImageType.RUNNER, request.getRunImage(), platform);
 		}
-		assertStackIdsMatch(runImage, builderImage);
+		warnIfDistrosDoNotMatch(runImage, builderImage);
 		BuildOwner buildOwner = BuildOwner.fromEnv(builderImage.getConfig().getEnv());
 		BuildpackLayersMetadata buildpackLayersMetadata = BuildpackLayersMetadata.fromImage(builderImage);
 		Buildpacks buildpacks = getBuildpacks(request, imageFetcher, platform, builderMetadata,
@@ -146,7 +146,8 @@ public class Builder {
 		if (request.getRunImage() != null) {
 			return request;
 		}
-		return request.withRunImage(getRunImageReference(metadata));
+		ImageReference defaultRunImage = request.getDefaultRunImage();
+		return request.withRunImage((defaultRunImage != null) ? defaultRunImage : getRunImageReference(metadata));
 	}
 
 	private ImageReference getRunImageReference(BuilderMetadata metadata) {
@@ -159,12 +160,11 @@ public class Builder {
 		return ImageReference.of(runImageName).inTaggedOrDigestForm();
 	}
 
-	private void assertStackIdsMatch(Image runImage, Image builderImage) {
-		StackId runImageStackId = StackId.fromImage(runImage);
-		StackId builderImageStackId = StackId.fromImage(builderImage);
-		if (runImageStackId.hasId() && builderImageStackId.hasId()) {
-			Assert.state(runImageStackId.equals(builderImageStackId), () -> "Run image stack '" + runImageStackId
-					+ "' does not match builder stack '" + builderImageStackId + "'");
+	private void warnIfDistrosDoNotMatch(Image runImage, Image builderImage) {
+		Distro runImageDistro = Distro.fromImage(runImage);
+		Distro builderImageDistro = Distro.fromImage(builderImage);
+		if (!runImageDistro.matches(builderImageDistro)) {
+			this.log.distrosDoNotMatch(runImageDistro.toString(), builderImageDistro.toString());
 		}
 	}
 

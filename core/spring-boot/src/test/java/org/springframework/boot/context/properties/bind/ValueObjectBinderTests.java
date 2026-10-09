@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.util.Assert;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  * @author Pavel Anisimov
  * @author Yanming Zhou
  * @author Ondřej Světlík
+ * @author Wan bin yu
  */
 class ValueObjectBinderTests {
 
@@ -304,6 +307,26 @@ class ValueObjectBinderTests {
 		ConverterAnnotatedExampleBean bean = this.binder.bindOrCreate("foo",
 				Bindable.of(ConverterAnnotatedExampleBean.class));
 		assertThat(bean.getDate()).hasToString("2019-05-10");
+	}
+
+	@Test
+	void createWithDefaultValuePlaceholderAndNoResolverShouldRetainPlaceholder() {
+		PlaceholderDefaultValue bean = this.binder.bindOrCreate("foo", PlaceholderDefaultValue.class);
+		assertThat(bean.value()).isEqualTo("${value}");
+	}
+
+	@Test
+	void createWithUnresolvedDefaultValuePlaceholderShouldRetainPlaceholder() {
+		Binder binder = new Binder(this.sources, new PropertySourcesPlaceholdersResolver(Collections.emptyList()));
+		PlaceholderDefaultValue bean = binder.bindOrCreate("foo", PlaceholderDefaultValue.class);
+		assertThat(bean.value()).isEqualTo("${value}");
+	}
+
+	@Test
+	void createWithDefaultValuePlaceholderResolvingToNonStringShouldConvert() {
+		Binder binder = new Binder(this.sources, (value) -> 42);
+		PlaceholderDefaultValue bean = binder.bindOrCreate("foo", PlaceholderDefaultValue.class);
+		assertThat(bean.value()).isEqualTo("42");
 	}
 
 	@Test
@@ -638,6 +661,10 @@ class ValueObjectBinderTests {
 
 	}
 
+	record PlaceholderDefaultValue(@DefaultValue("${value}") String value) {
+
+	}
+
 	static class ExampleDefaultValueBean {
 
 		private final int intValue;
@@ -697,8 +724,8 @@ class ValueObjectBinderTests {
 
 		private final String bar;
 
-		ConverterAnnotatedExampleBean(
-				@DefaultValue("2019-05-10") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date, String bar) {
+		ConverterAnnotatedExampleBean(@DefaultValue("2019-05-10") @DateTimeFormat(iso = ISO.DATE) LocalDate date,
+				String bar) {
 			this.date = date;
 			this.bar = bar;
 		}

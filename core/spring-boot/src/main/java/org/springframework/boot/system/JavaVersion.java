@@ -18,6 +18,7 @@ package org.springframework.boot.system;
 
 import java.io.Console;
 import java.io.Reader;
+import java.nio.charset.Charset;
 import java.text.NumberFormat;
 import java.time.Duration;
 import java.util.Arrays;
@@ -100,7 +101,13 @@ public enum JavaVersion {
 	 * Java 26.
 	 * @since 4.0.3
 	 */
-	TWENTY_SIX("26", String.class, "equalsFoldCase", String.class);
+	TWENTY_SIX("26", String.class, "equalsFoldCase", String.class),
+
+	/**
+	 * Java 27.
+	 * @since 4.0.9
+	 */
+	TWENTY_SEVEN("27", String.class, "encodedLength", Charset.class);
 
 	private final String name;
 

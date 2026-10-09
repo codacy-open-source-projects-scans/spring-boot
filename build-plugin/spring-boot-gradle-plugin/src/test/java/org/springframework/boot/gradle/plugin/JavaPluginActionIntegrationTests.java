@@ -129,7 +129,7 @@ class JavaPluginActionIntegrationTests {
 	}
 
 	@TestTemplate
-	void additionalMetadataLocationsConfiguredWhenProcessorIsPresent() throws IOException {
+	void configurationPropertiesCompilerArgumentsConfiguredWhenProcessorIsPresent() throws IOException {
 		createMinimalMainSource();
 		File libs = new File(this.gradleBuild.getProjectDir(), "libs");
 		libs.mkdirs();
@@ -139,19 +139,51 @@ class JavaPluginActionIntegrationTests {
 		BuildTask task = result.task(":compileJava");
 		assertThat(task).isNotNull();
 		assertThat(task.getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
-		assertThat(result.getOutput()).contains("compileJava compiler args: [-parameters, -Aorg.springframework.boot."
-				+ "configurationprocessor.additionalMetadataLocations="
-				+ new File(this.gradleBuild.getProjectDir(), "src/main/resources").getCanonicalPath());
+		assertThat(result.getOutput())
+			.contains("compileJava compiler args: [-parameters, -Aorg.springframework.boot."
+					+ "configurationprocessor.additionalMetadataLocations="
+					+ new File(this.gradleBuild.getProjectDir(), "src/main/resources").getCanonicalPath()
+					+ ", -Aorg.springframework.boot.configurationprocessor.descriptionCacheLocation="
+					+ new File(this.gradleBuild.getProjectDir(),
+							"build/tmp/compileJava/previous-spring-configuration-metadata.json")
+						.getCanonicalPath()
+					+ "]");
 	}
 
 	@TestTemplate
-	void additionalMetadataLocationsNotConfiguredWhenProcessorIsAbsent() throws IOException {
+	void configurationPropertiesCompilerArgumentsNotConfiguredWhenProcessorIsAbsent() throws IOException {
 		createMinimalMainSource();
 		BuildResult result = this.gradleBuild.build("compileJava");
 		BuildTask task = result.task(":compileJava");
 		assertThat(task).isNotNull();
 		assertThat(task.getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
 		assertThat(result.getOutput()).contains("compileJava compiler args: [-parameters]");
+	}
+
+	@TestTemplate
+	void descriptionCacheLocationIsAnOutputOfCompileJava() throws IOException {
+		createMinimalMainSource();
+		BuildResult result = this.gradleBuild.build("compileJava");
+		BuildTask task = result.task(":compileJava");
+		assertThat(task).isNotNull();
+		assertThat(task.getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+		assertThat(result.getOutput()).contains("compileJava outputs: ")
+			.contains(new File(this.gradleBuild.getProjectDir(),
+					"build/tmp/compileJava/previous-spring-configuration-metadata.json")
+				.getCanonicalPath());
+	}
+
+	@TestTemplate
+	void compileJavaIsUpToDateOnSecondInvocation() throws IOException {
+		createMinimalMainSource();
+		BuildResult result = this.gradleBuild.build("compileJava");
+		BuildTask task = result.task(":compileJava");
+		assertThat(task).isNotNull();
+		assertThat(task.getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+		result = this.gradleBuild.build("compileJava");
+		task = result.task(":compileJava");
+		assertThat(task).isNotNull();
+		assertThat(task.getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
 	}
 
 	@TestTemplate
@@ -211,6 +243,24 @@ class JavaPluginActionIntegrationTests {
 		assertThat(matcher.find()).as("%s found in %s", matcher, output).isTrue();
 		String attributes = matcher.group(1);
 		assertThat(output).contains("productionRuntimeClasspath: " + attributes);
+	}
+
+	@TestTemplate
+	void developmentOnlyIsConfiguredWithAttributesThatMatchRuntimeClasspath() {
+		String output = this.gradleBuild.build("build").getOutput();
+		Matcher matcher = Pattern.compile("runtimeClasspath: (\\[.*])").matcher(output);
+		assertThat(matcher.find()).as("%s found in %s", matcher, output).isTrue();
+		String attributes = matcher.group(1);
+		assertThat(output).contains("developmentOnly: " + attributes);
+	}
+
+	@TestTemplate
+	void testAndDevelopmentOnlyIsConfiguredWithAttributesThatMatchRuntimeClasspath() {
+		String output = this.gradleBuild.build("build").getOutput();
+		Matcher matcher = Pattern.compile("runtimeClasspath: (\\[.*])").matcher(output);
+		assertThat(matcher.find()).as("%s found in %s", matcher, output).isTrue();
+		String attributes = matcher.group(1);
+		assertThat(output).contains("testAndDevelopmentOnly: " + attributes);
 	}
 
 	@TestTemplate

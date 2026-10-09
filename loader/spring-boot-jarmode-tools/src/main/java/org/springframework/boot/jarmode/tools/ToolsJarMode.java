@@ -22,11 +22,13 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.boot.loader.jarmode.JarMode;
+import org.springframework.boot.loader.jarmode.JarModeErrorException;
 
 /**
  * {@link JarMode} providing {@code "tools"} support.
  *
  * @author Moritz Halbritter
+ * @author Hyeongjun Cho
  * @since 3.3.0
  */
 public class ToolsJarMode implements JarMode {
@@ -54,13 +56,16 @@ public class ToolsJarMode implements JarMode {
 		try {
 			new Runner(this.out, this.context, getCommands(this.context)).run(args);
 		}
+		catch (JarModeErrorException ex) {
+			throw ex;
+		}
 		catch (Exception ex) {
 			throw new IllegalStateException(ex);
 		}
 	}
 
 	static List<Command> getCommands(Context context) {
-		return List.of(new ExtractCommand(context), new ListLayersCommand(context));
+		return List.of(new ExtractCommand(context), new ListLayersCommand(context), new SbomCommand(context));
 	}
 
 }

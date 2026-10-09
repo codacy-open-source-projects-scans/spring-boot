@@ -137,6 +137,10 @@ class MetadataGenerationEnvironment {
 		return this.typeUtils;
 	}
 
+	boolean hasSourceTree(TypeElement element) {
+		return this.fieldValuesParser.hasSourceTree(element);
+	}
+
 	Messager getMessager() {
 		return this.messager;
 	}
@@ -402,8 +406,8 @@ class MetadataGenerationEnvironment {
 			// continue
 		}
 		Element superType = this.typeUtils.asElement(element.getSuperclass());
-		if (superType instanceof TypeElement && superType.asType().getKind() != TypeKind.NONE) {
-			resolveFieldValuesFor(values, (TypeElement) superType);
+		if (superType instanceof TypeElement typeElement && superType.asType().getKind() != TypeKind.NONE) {
+			resolveFieldValuesFor(values, typeElement);
 		}
 	}
 

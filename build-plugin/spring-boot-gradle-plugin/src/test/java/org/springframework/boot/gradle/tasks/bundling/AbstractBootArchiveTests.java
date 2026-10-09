@@ -55,6 +55,7 @@ import org.gradle.api.internal.file.archive.ZipEntryConstants;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -80,7 +81,6 @@ import static org.mockito.Mockito.mock;
 abstract class AbstractBootArchiveTests<T extends Jar & BootArchive> {
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File temp;
 
 	private final Class<T> taskClass;
@@ -88,6 +88,8 @@ abstract class AbstractBootArchiveTests<T extends Jar & BootArchive> {
 	private final String launcherClass;
 
 	private final String libPath;
+
+	private final @Nullable String libProvidedPath;
 
 	private final String classesPath;
 
@@ -97,11 +99,12 @@ abstract class AbstractBootArchiveTests<T extends Jar & BootArchive> {
 
 	private T task;
 
-	protected AbstractBootArchiveTests(Class<T> taskClass, String launcherClass, String libPath, String classesPath,
-			String indexPath) {
+	protected AbstractBootArchiveTests(Class<T> taskClass, String launcherClass, String libPath,
+			@Nullable String libProvidedPath, String classesPath, String indexPath) {
 		this.taskClass = taskClass;
 		this.launcherClass = launcherClass;
 		this.libPath = libPath;
+		this.libProvidedPath = libProvidedPath;
 		this.classesPath = classesPath;
 		this.indexPath = indexPath;
 	}
@@ -125,6 +128,8 @@ abstract class AbstractBootArchiveTests<T extends Jar & BootArchive> {
 			assertThat(jarFile.getManifest().getMainAttributes().getValue("Spring-Boot-Classes"))
 				.isEqualTo(this.classesPath);
 			assertThat(jarFile.getManifest().getMainAttributes().getValue("Spring-Boot-Lib")).isEqualTo(this.libPath);
+			assertThat(jarFile.getManifest().getMainAttributes().getValue("Spring-Boot-Lib-Provided"))
+				.isEqualTo(this.libProvidedPath);
 			assertThat(jarFile.getManifest().getMainAttributes().getValue("Spring-Boot-Version")).isNotNull();
 			assertThat(jarFile.getManifest().getMainAttributes().getValue("Implementation-Title"))
 				.isEqualTo(this.project.getName());
@@ -245,6 +250,25 @@ abstract class AbstractBootArchiveTests<T extends Jar & BootArchive> {
 		executeTask();
 		try (JarFile jarFile = new JarFile(this.task.getArchiveFile().get().getAsFile())) {
 			assertThat(jarFile.getEntry(this.libPath + "/test.pom")).isNull();
+		}
+	}
+
+	@Test
+	void additionalConfigurationMetadataIsExcluded() throws IOException {
+		this.task.getMainClass().set("com.example.Main");
+		File classpathDirectory = new File(this.temp, "classes");
+		File additionalMetadata = new File(classpathDirectory,
+				"META-INF/additional-spring-configuration-metadata.json");
+		additionalMetadata.getParentFile().mkdirs();
+		additionalMetadata.createNewFile();
+		File metadata = new File(classpathDirectory, "META-INF/spring-configuration-metadata.json");
+		metadata.createNewFile();
+		this.task.classpath(classpathDirectory);
+		executeTask();
+		try (JarFile jarFile = new JarFile(this.task.getArchiveFile().get().getAsFile())) {
+			assertThat(getEntryNames(jarFile))
+				.noneMatch((name) -> name.endsWith("META-INF/additional-spring-configuration-metadata.json"))
+				.anyMatch((name) -> name.endsWith("META-INF/spring-configuration-metadata.json"));
 		}
 	}
 

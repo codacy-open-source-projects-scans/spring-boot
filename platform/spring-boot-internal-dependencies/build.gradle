@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -94,13 +94,6 @@ bom {
 			]
 		}
 	}
-	library("Janino", "3.1.12") {
-		group("org.codehaus.janino") {
-			bom("janino") {
-				permit("junit:junit")
-			}
-		}
-	}
 	library("JLine", "2.11") {
 		prohibit {
 			versionRange "[2.12,)"
@@ -157,15 +150,16 @@ bom {
 			]
 		}
 	}
-	library("Maven Resolver", "1.9.23") {
+	library("Maven Resolver", "2.0.24") {
 		group("org.apache.maven.resolver") {
 			modules = [
 				"maven-resolver-api",
 				"maven-resolver-connector-basic",
 				"maven-resolver-impl",
 				"maven-resolver-spi",
+				"maven-resolver-supplier-mvn3",
+				"maven-resolver-transport-apache",
 				"maven-resolver-transport-file",
-				"maven-resolver-transport-http",
 				"maven-resolver-util"
 			]
 		}
@@ -253,6 +247,14 @@ bom {
 				"testng"
 			]
 		}
+	}
+	library("TomlJ", "1.0.0") {
+		group("org.tomlj") {
+			modules = [
+				"tomlj"
+			]
+		}
+
 	}
 }
 

@@ -44,10 +44,11 @@ import org.springframework.boot.test.context.assertj.AssertableWebApplicationCon
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.boot.tomcat.autoconfigure.servlet.TomcatServletWebServerAutoConfiguration;
+import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.server.servlet.context.AnnotationConfigServletWebServerApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -109,11 +110,13 @@ class JerseyServerMetricsAutoConfigurationTests {
 	}
 
 	private static void doRequest(AssertableWebApplicationContext context) {
-		int port = context.getSourceApplicationContext(AnnotationConfigServletWebServerApplicationContext.class)
-			.getWebServer()
-			.getPort();
-		RestTemplate restTemplate = new RestTemplate();
-		restTemplate.getForEntity(URI.create("http://localhost:" + port + "/users/3"), String.class);
+		WebServer webServer = context
+			.getSourceApplicationContext(AnnotationConfigServletWebServerApplicationContext.class)
+			.getWebServer();
+		assertThat(webServer).isNotNull();
+		int port = webServer.getPort();
+		RestClient restClient = RestClient.create();
+		restClient.get().uri(URI.create("http://localhost:" + port + "/users/3")).retrieve().toEntity(String.class);
 	}
 
 	@Configuration(proxyBeanMethods = false)
@@ -142,7 +145,7 @@ class JerseyServerMetricsAutoConfigurationTests {
 
 		@Bean
 		MeterObservationHandler<Context> meterObservationHandler(MeterRegistry registry) {
-			return new DefaultMeterObservationHandler(registry);
+			return DefaultMeterObservationHandler.builder(registry).build();
 		}
 
 	}

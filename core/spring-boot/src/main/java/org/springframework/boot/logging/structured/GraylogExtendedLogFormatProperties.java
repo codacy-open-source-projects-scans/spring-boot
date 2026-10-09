@@ -27,10 +27,10 @@ import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 /**
- * Service details for Graylog Extended Log Format structured logging.
+ * Properties for Graylog Extended Log Format structured logging.
  *
  * @param host the application name
- * @param service the version of the application
+ * @param service service details
  * @author Samuel Lissner
  * @author Phillip Webb
  * @since 3.4.0
@@ -58,7 +58,6 @@ public record GraylogExtendedLogFormatProperties(@Nullable String host, Service 
 	 * Add {@link JsonWriter} members for the service.
 	 * @param members the members to add to
 	 */
-	@SuppressWarnings("NullAway") // Doesn't detect lambda with correct nullability
 	public void jsonMembers(JsonWriter.Members<?> members) {
 		members.add("host", this::host).whenHasLength();
 		this.service.jsonMembers(members);
@@ -91,7 +90,6 @@ public record GraylogExtendedLogFormatProperties(@Nullable String host, Service 
 			return new Service(version);
 		}
 
-		@SuppressWarnings("NullAway") // Doesn't detect lambda with correct nullability
 		void jsonMembers(JsonWriter.Members<?> members) {
 			members.add("_service_version", this::version).whenHasLength();
 		}

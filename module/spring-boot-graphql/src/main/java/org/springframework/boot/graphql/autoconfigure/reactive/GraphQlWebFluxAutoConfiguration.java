@@ -17,6 +17,8 @@
 package org.springframework.boot.graphql.autoconfigure.reactive;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import graphql.GraphQL;
 import org.apache.commons.logging.Log;
@@ -90,15 +92,20 @@ public final class GraphQlWebFluxAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	GraphQlHttpHandler graphQlHttpHandler(WebGraphQlHandler webGraphQlHandler) {
-		return new GraphQlHttpHandler(webGraphQlHandler);
+	GraphQlHttpHandler graphQlHttpHandler(WebGraphQlHandler webGraphQlHandler, GraphQlProperties properties) {
+		return GraphQlHttpHandler.builder(webGraphQlHandler)
+			.httpMethods(asHttpMethods(properties.getHttp().getMethods()))
+			.build();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
 	GraphQlSseHandler graphQlSseHandler(WebGraphQlHandler webGraphQlHandler, GraphQlProperties properties) {
-		return new GraphQlSseHandler(webGraphQlHandler, properties.getHttp().getSse().getTimeout(),
-				properties.getHttp().getSse().getKeepAlive());
+		return GraphQlSseHandler.builder(webGraphQlHandler)
+			.timeout(properties.getHttp().getSse().getTimeout())
+			.keepAliveDuration(properties.getHttp().getSse().getKeepAlive())
+			.httpMethods(asHttpMethods(properties.getHttp().getSse().getMethods()))
+			.build();
 	}
 
 	@Bean
@@ -113,12 +120,15 @@ public final class GraphQlWebFluxAutoConfiguration {
 	RouterFunction<ServerResponse> graphQlRouterFunction(GraphQlHttpHandler httpHandler, GraphQlSseHandler sseHandler,
 			ObjectProvider<GraphQlSource> graphQlSourceProvider, GraphQlProperties properties) {
 		String path = properties.getHttp().getPath();
-		logger.info(LogMessage.format("GraphQL endpoint HTTP POST %s", path));
+		Set<HttpMethod> allowedMethods = concat(httpHandler.getHttpMethods(), sseHandler.getHttpMethods());
+		logger.info(LogMessage.format("GraphQL endpoint HTTP %s %s", allowedMethods, path));
 		RouterFunctions.Builder builder = RouterFunctions.route();
-		builder.route(GraphQlRequestPredicates.graphQlHttp(path), httpHandler::handleRequest);
-		builder.route(GraphQlRequestPredicates.graphQlSse(path), sseHandler::handleRequest);
+		builder.route(GraphQlRequestPredicates.graphQlHttp(path, httpHandler.getHttpMethods()),
+				httpHandler::handleRequest);
+		builder.route(GraphQlRequestPredicates.graphQlSse(path, sseHandler.getHttpMethods()),
+				sseHandler::handleRequest);
 		builder.POST(path, this::unsupportedMediaType);
-		builder.GET(path, this::onlyAllowPost);
+		builder.GET(path, (request) -> methodNotAllowed(allowedMethods));
 		if (properties.getGraphiql().isEnabled()) {
 			GraphiQlHandler graphQlHandler = createGraphQlHandler(properties, path);
 			builder.GET(properties.getGraphiql().getPath(), graphQlHandler::handleRequest);
@@ -143,12 +153,20 @@ public final class GraphQlWebFluxAutoConfiguration {
 		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 	}
 
-	private Mono<ServerResponse> onlyAllowPost(ServerRequest request) {
-		return ServerResponse.status(HttpStatus.METHOD_NOT_ALLOWED).headers(this::onlyAllowPost).build();
+	private Mono<ServerResponse> methodNotAllowed(Set<HttpMethod> allowedMethods) {
+		return ServerResponse.status(HttpStatus.METHOD_NOT_ALLOWED)
+			.headers((headers) -> headers.setAllow(allowedMethods))
+			.build();
 	}
 
-	private void onlyAllowPost(HttpHeaders headers) {
-		headers.setAllow(Collections.singleton(HttpMethod.POST));
+	private Set<HttpMethod> concat(Set<HttpMethod> methods, Set<HttpMethod> otherMethods) {
+		Set<HttpMethod> allowedMethods = new LinkedHashSet<>(methods);
+		allowedMethods.addAll(otherMethods);
+		return allowedMethods;
+	}
+
+	private static HttpMethod[] asHttpMethods(Set<String> methods) {
+		return methods.stream().map(HttpMethod::valueOf).toArray(HttpMethod[]::new);
 	}
 
 	@Configuration(proxyBeanMethods = false)
@@ -180,9 +198,12 @@ public final class GraphQlWebFluxAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean
 		GraphQlWebSocketHandler graphQlWebSocketHandler(WebGraphQlHandler webGraphQlHandler,
-				GraphQlProperties properties, ServerCodecConfigurer configurer) {
-			return new GraphQlWebSocketHandler(webGraphQlHandler, configurer,
-					properties.getWebsocket().getConnectionInitTimeout(), properties.getWebsocket().getKeepAlive());
+				GraphQlProperties properties, GraphQlCorsProperties corsProperties, ServerCodecConfigurer configurer) {
+			return GraphQlWebSocketHandler
+				.builder(webGraphQlHandler, configurer, properties.getWebsocket().getConnectionInitTimeout())
+				.keepAliveDuration(properties.getWebsocket().getKeepAlive())
+				.corsConfiguration(corsProperties.toCorsConfiguration())
+				.build();
 		}
 
 		@Bean

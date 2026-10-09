@@ -16,7 +16,11 @@
 
 package org.springframework.boot.build.bom.bomr;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -36,6 +40,7 @@ import org.springframework.boot.build.bom.bomr.github.Milestone;
 import org.springframework.boot.build.bom.bomr.version.DependencyVersion;
 import org.springframework.boot.build.properties.BuildProperties;
 import org.springframework.boot.build.properties.BuildType;
+import org.springframework.util.Assert;
 
 /**
  * A {@link Task} to move to snapshot dependencies.
@@ -66,14 +71,17 @@ public abstract class MoveToSnapshots extends UpgradeDependencies {
 	}
 
 	@Override
-	protected String commitMessage(Upgrade upgrade, int issueNumber) {
-		return "Start building against " + upgrade.toRelease().getNameAndVersion() + " snapshots" + "\n\nSee gh-"
-				+ issueNumber;
+	protected String commitMessage(Upgrade upgrade, Integer issueNumber) {
+		String message = "Start building against " + upgrade.toRelease().getNameAndVersion() + " snapshots";
+		if (issueNumber != null) {
+			message += "\n\nSee gh-" + issueNumber;
+		}
+		return message;
 	}
 
 	@Override
 	protected boolean eligible(Library library) {
-		return library.isConsiderSnapshots() && super.eligible(library);
+		return library.isFirstParty() && super.eligible(library);
 	}
 
 	@Override
@@ -86,7 +94,11 @@ public abstract class MoveToSnapshots extends UpgradeDependencies {
 
 	private BiFunction<Library, DependencyVersion, VersionOption> createOpenSourceVersionOptionResolver(
 			Milestone milestone) {
-		Map<String, List<Release>> scheduledReleases = getScheduledOpenSourceReleases(milestone);
+		OffsetDateTime releaseDate = (milestone.getDueOn() != null) ? milestone.getDueOn() : releaseTrainDate();
+		Assert.state(releaseDate != null,
+				"No release date available. Schedule the %s milestone or use --release-train to provide a release date"
+					.formatted(milestone.getName()));
+		Map<String, List<Release>> scheduledReleases = getScheduledOpenSourceReleases(releaseDate);
 		BiFunction<Library, DependencyVersion, VersionOption> resolver = super.createVersionOptionResolver(milestone);
 		return (library, dependencyVersion) -> {
 			VersionOption versionOption = resolver.apply(library, dependencyVersion);
@@ -103,16 +115,23 @@ public abstract class MoveToSnapshots extends UpgradeDependencies {
 				}
 				if (logger.isInfoEnabled()) {
 					logger.info("Ignoring {}. No release of {} scheduled before {}", dependencyVersion,
-							library.getName(), milestone.getDueOn());
+							library.getName(), releaseDate);
 				}
 			}
 			return null;
 		};
 	}
 
-	private Map<String, List<Release>> getScheduledOpenSourceReleases(Milestone milestone) {
+	private OffsetDateTime releaseTrainDate() {
+		return getReleaseTrain()
+			.map((releaseTrain) -> LocalDate.parse(releaseTrain, DateTimeFormatter.ofPattern("yyyy.MM.dd")))
+			.map((date) -> OffsetDateTime.of(date, LocalTime.of(23, 59, 59), ZoneOffset.UTC))
+			.getOrNull();
+	}
+
+	private Map<String, List<Release>> getScheduledOpenSourceReleases(OffsetDateTime releaseDate) {
 		ReleaseSchedule releaseSchedule = new ReleaseSchedule();
-		return releaseSchedule.releasesBetween(OffsetDateTime.now(), milestone.getDueOn());
+		return releaseSchedule.releasesBetween(OffsetDateTime.now(), releaseDate);
 	}
 
 }

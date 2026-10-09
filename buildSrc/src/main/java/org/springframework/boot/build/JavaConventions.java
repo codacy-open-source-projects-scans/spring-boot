@@ -38,11 +38,19 @@ import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.ComponentMetadataDetails;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencySet;
+import org.gradle.api.artifacts.ModuleVersionIdentifier;
+import org.gradle.api.attributes.AttributeContainer;
+import org.gradle.api.attributes.Bundling;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.DocsType;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.FileTreeElement;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -65,6 +73,8 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.springframework.boot.build.architecture.ArchitecturePlugin;
 import org.springframework.boot.build.classpath.CheckClasspathForProhibitedDependencies;
 import org.springframework.boot.build.optional.OptionalDependenciesPlugin;
+import org.springframework.boot.build.properties.BuildProperties;
+import org.springframework.boot.build.properties.BuildType;
 import org.springframework.boot.build.springframework.CheckAotFactories;
 import org.springframework.boot.build.springframework.CheckSpringFactories;
 import org.springframework.boot.build.testing.TestFailuresPlugin;
@@ -159,16 +169,21 @@ class JavaConventions {
 			configureProhibitedDependencyChecks(project);
 			configureFactoriesFilesChecks(project);
 			configureNullability(project);
+			configureDependencyFixes(project);
 		});
 	}
 
 	private void configureJarManifestConventions(Project project) {
+		BuildType buildType = BuildProperties.get(project).buildType();
+		String license = (buildType == BuildType.OPEN_SOURCE) ? "Apache License, Version 2.0"
+				: "Broadcom Foundation License";
 		TaskProvider<ExtractResources> extractLegalResources = project.getTasks()
 			.register("extractLegalResources", ExtractResources.class, (task) -> {
 				task.getPackageName().set("org.springframework.boot.build.legal");
 				task.getDestinationDirectory().set(project.getLayout().getBuildDirectory().dir("legal"));
 				task.getResourceNames().set(Arrays.asList("LICENSE.txt", "NOTICE.txt"));
 				task.getProperties().put("version", project.getVersion().toString());
+				task.getProperties().put("license", license);
 			});
 		SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
 		Set<String> sourceJarTaskNames = sourceSets.stream()
@@ -395,6 +410,34 @@ class JavaConventions {
 		if (errorProneVersion != null) {
 			extension.getErrorProneVersion().set(errorProneVersion);
 		}
+	}
+
+	private void configureDependencyFixes(Project project) {
+		project.getDependencies().getComponents().all((details) -> {
+			addDocumentationVariant(project, details, "implicitjavadoc", "implicitjavadoc", "javadoc");
+			addDocumentationVariant(project, details, "implicitsources", "implicitsources", "sources");
+		});
+	}
+
+	private void addDocumentationVariant(Project project, ComponentMetadataDetails details, String name,
+			String docsType, String classifier) {
+		ModuleVersionIdentifier id = details.getId();
+		if ("org.nodejs".equals(id.getGroup())) {
+			return;
+		}
+		String file = "%s-%s-%s.jar".formatted(id.getName(), id.getVersion(), classifier);
+		details.addVariant(name, (variant) -> {
+			variant.attributes((attributes) -> addDocumentationAttributes(project, attributes, docsType));
+			variant.withFiles((files) -> files.addFile(file));
+		});
+	}
+
+	private void addDocumentationAttributes(Project project, AttributeContainer attributes, String docsType) {
+		ObjectFactory objects = project.getObjects();
+		attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
+		attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.DOCUMENTATION));
+		attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
+		attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType.class, docsType));
 	}
 
 }

@@ -23,9 +23,17 @@ import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import tools.jackson.databind.json.JsonMapper;
+
+import org.springframework.boot.build.bom.Library.LinkedModule;
+import org.springframework.util.Assert;
 
 /**
  * A resolved bom.
@@ -33,8 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
  * @author Andy Wilkinson
  * @param id the ID of the resolved bom
  * @param libraries the libraries declared in the bom
+ * @param offlineJavadocLinks offline javadoc links
  */
-public record ResolvedBom(Id id, List<ResolvedLibrary> libraries) {
+public record ResolvedBom(Id id, List<ResolvedLibrary> libraries, Map<URI, List<String>> offlineJavadocLinks) {
 
 	private static final JsonMapper jsonMapper;
 
@@ -42,6 +51,23 @@ public record ResolvedBom(Id id, List<ResolvedLibrary> libraries) {
 		jsonMapper = JsonMapper.builder()
 			.changeDefaultPropertyInclusion((value) -> value.withContentInclusion(Include.NON_EMPTY))
 			.build();
+	}
+
+	public ResolvedLibrary library(Library library) {
+		return ResolvedLibrary.find(libraries(), library);
+	}
+
+	public Map<String, String> dependencyVersions() {
+		return allDependencies().collect(Collectors.toMap((id) -> id.groupId() + ":" + id.artifactId(),
+				(id) -> id.version(), (id1, id2) -> id1));
+	}
+
+	public Stream<Id> allDependencies() {
+		return libraries().stream().flatMap(ResolvedLibrary::allDependencies);
+	}
+
+	public void writeTo(Writer writer) {
+		jsonMapper.writeValue(writer, this);
 	}
 
 	public static ResolvedBom readFrom(File file) {
@@ -53,12 +79,44 @@ public record ResolvedBom(Id id, List<ResolvedLibrary> libraries) {
 		}
 	}
 
-	public void writeTo(Writer writer) {
-		jsonMapper.writeValue(writer, this);
+	public record ResolvedLibrary(String name, String version, String versionProperty, List<Id> managedDependencies,
+			List<Bom> importedBoms) {
+
+		public String moduleVersion(LinkedModule linkedModule) {
+			Set<String> matching = allDependencies()
+				.filter((candidate) -> linkedModule.moduleNames().contains(candidate.artifactId()))
+				.map((candidate) -> candidate.version())
+				.collect(Collectors.toCollection(TreeSet::new));
+			Assert.state(!matching.isEmpty(), () -> "No module found with name '%s'".formatted(this.name));
+			Assert.state(matching.size() == 1,
+					() -> "Multiple artifacts versions found with name '%s'".formatted(this.name));
+			return matching.iterator().next();
+		}
+
+		public Stream<Id> allDependencies() {
+			return Stream.concat(managedDependencies().stream(), importedBoms().stream().flatMap(Bom::allDependencies));
+		}
+
+		public static ResolvedLibrary find(List<ResolvedLibrary> libraries, Library library) {
+			String name = library.getName();
+			List<ResolvedLibrary> matching = libraries.stream()
+				.filter((candidate) -> candidate.name().equals(name))
+				.toList();
+			Assert.state(!matching.isEmpty(), () -> "No library found with name '%s'".formatted(name));
+			Assert.state(matching.size() == 1, () -> "Multiple libraries found with name '%s'".formatted(name));
+			return matching.get(0);
+		}
+
 	}
 
-	public record ResolvedLibrary(String name, String version, String versionProperty, List<Id> managedDependencies,
-			List<Bom> importedBoms, Links links) {
+	public record Bom(Id id, Bom parent, List<Id> managedDependencies, List<Bom> importedBoms) {
+
+		public Stream<Id> allDependencies() {
+			Stream<Id> managedAndImportedDependencies = Stream.concat(managedDependencies().stream(),
+					importedBoms().stream().flatMap(Bom::allDependencies));
+			return (parent() != null) ? Stream.concat(parent().allDependencies(), managedAndImportedDependencies)
+					: managedAndImportedDependencies;
+		}
 
 	}
 
@@ -96,17 +154,14 @@ public record ResolvedBom(Id id, List<ResolvedLibrary> libraries) {
 			return builder.toString();
 		}
 
-	}
+		public String groupAndArtifactId() {
+			return groupId() + ":" + artifactId();
+		}
 
-	public record Bom(Id id, Bom parent, List<Id> managedDependencies, List<Bom> importedBoms) {
-
-	}
-
-	public record Links(List<JavadocLink> javadoc) {
-
-	}
-
-	public record JavadocLink(URI uri, List<String> packages) {
+		public static Id parse(String value) {
+			String[] components = value.split(":");
+			return new Id(components[0], components[1], components[2]);
+		}
 
 	}
 

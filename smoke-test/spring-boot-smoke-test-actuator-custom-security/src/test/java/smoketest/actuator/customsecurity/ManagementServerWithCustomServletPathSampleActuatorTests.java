@@ -19,15 +19,12 @@ package smoketest.actuator.customsecurity;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 /**
  * Integration tests for a separate management server with a custom dispatcher servlet
@@ -35,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Madhura Bhave
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
 		properties = { "management.server.port=0", "spring.mvc.servlet.path=/example" })
 class ManagementServerWithCustomServletPathSampleActuatorTests extends AbstractSampleActuatorCustomSecurityTests {
 
@@ -50,9 +47,13 @@ class ManagementServerWithCustomServletPathSampleActuatorTests extends AbstractS
 
 	@Test
 	void actuatorPathOnMainPortShouldNotMatch() {
-		ResponseEntity<String> entity = new TestRestTemplate()
-			.getForEntity("http://localhost:" + this.port + "/example/actuator/health", String.class);
-		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		RestTestClient.bindToServer()
+			.build()
+			.get()
+			.uri("http://localhost:" + this.port + "/example/actuator/health")
+			.exchange()
+			.expectStatus()
+			.isUnauthorized();
 	}
 
 	@Override

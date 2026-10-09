@@ -45,6 +45,7 @@ import org.springframework.boot.loader.tools.AbstractJarWriter.EntryTransformer;
 import org.springframework.boot.loader.tools.AbstractJarWriter.UnpackHandler;
 import org.springframework.core.io.support.SpringFactoriesLoader;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -55,9 +56,13 @@ import org.springframework.util.StringUtils;
  * @author Stephane Nicoll
  * @author Madhura Bhave
  * @author Scott Frederick
+ * @author Wan bin yu
+ * @author Cobi Eun
  * @since 2.3.0
  */
 public abstract class Packager {
+
+	private static final String ADDITIONAL_CONFIGURATION_METADATA_PATH = "META-INF/additional-spring-configuration-metadata.json";
 
 	private static final String MAIN_CLASS_ATTRIBUTE = "Main-Class";
 
@@ -68,6 +73,8 @@ public abstract class Packager {
 	private static final String BOOT_CLASSES_ATTRIBUTE = "Spring-Boot-Classes";
 
 	private static final String BOOT_LIB_ATTRIBUTE = "Spring-Boot-Lib";
+
+	private static final String BOOT_LIB_PROVIDED_ATTRIBUTE = "Spring-Boot-Lib-Provided";
 
 	private static final String BOOT_CLASSPATH_INDEX_ATTRIBUTE = "Spring-Boot-Classpath-Index";
 
@@ -205,7 +212,7 @@ public abstract class Packager {
 		}
 		writer.writeManifest(buildManifest(sourceJar));
 		writeLoaderClasses(writer);
-		writer.writeEntries(sourceJar, getEntityTransformer(), libraries.getUnpackHandler(),
+		writer.writeEntries(sourceJar, getEntryTransformer(), libraries.getUnpackHandler(),
 				libraries.getLibraryLookup());
 		Map<String, Library> writtenLibraries = libraries.write(writer);
 		writeNativeImageArgFile(writer, sourceJar, writtenLibraries);
@@ -272,11 +279,14 @@ public abstract class Packager {
 			throws IOException {
 	}
 
-	private EntryTransformer getEntityTransformer() {
+	private EntryTransformer getEntryTransformer() {
+		EntryTransformer transformer = EntryTransformer.NONE;
 		if (getLayout() instanceof RepackagingLayout repackagingLayout) {
-			return new RepackagingEntryTransformer(repackagingLayout);
+			transformer = new RepackagingEntryTransformer(repackagingLayout);
 		}
-		return EntryTransformer.NONE;
+		EntryTransformer delegate = transformer;
+		String additionalMetadataLocation = getLayout().getClassesLocation() + ADDITIONAL_CONFIGURATION_METADATA_PATH;
+		return (entry) -> (entry.getName().equals(additionalMetadataLocation)) ? null : delegate.transform(entry);
 	}
 
 	private boolean isZip(InputStreamSupplier supplier) {
@@ -406,7 +416,12 @@ public abstract class Packager {
 		else {
 			attributes.putValue(BOOT_CLASSES_ATTRIBUTE, layout.getClassesLocation());
 		}
-		putIfHasLength(attributes, BOOT_LIB_ATTRIBUTE, getLayout().getLibraryLocation("", LibraryScope.COMPILE));
+		String libraryLocation = layout.getLibraryLocation("", LibraryScope.COMPILE);
+		putIfHasLength(attributes, BOOT_LIB_ATTRIBUTE, libraryLocation);
+		String providedLibraryLocation = layout.getLibraryLocation("", LibraryScope.PROVIDED);
+		if (!ObjectUtils.nullSafeEquals(providedLibraryLocation, libraryLocation)) {
+			putIfHasLength(attributes, BOOT_LIB_PROVIDED_ATTRIBUTE, providedLibraryLocation);
+		}
 		putIfHasLength(attributes, BOOT_CLASSPATH_INDEX_ATTRIBUTE, layout.getClasspathIndexFileLocation());
 		if (isLayered()) {
 			putIfHasLength(attributes, BOOT_LAYERS_INDEX_ATTRIBUTE, layout.getLayersIndexFileLocation());
@@ -422,7 +437,8 @@ public abstract class Packager {
 	}
 
 	private boolean isCycloneDxBom(JarEntry entry) {
-		if (!entry.getName().startsWith("META-INF/sbom/")) {
+		if (!entry.getName().startsWith("META-INF/sbom/")
+				&& !entry.getName().startsWith(getLayout().getClassesLocation() + "META-INF/sbom/")) {
 			return false;
 		}
 		return entry.getName().endsWith(".cdx.json") || entry.getName().endsWith("/bom.json");

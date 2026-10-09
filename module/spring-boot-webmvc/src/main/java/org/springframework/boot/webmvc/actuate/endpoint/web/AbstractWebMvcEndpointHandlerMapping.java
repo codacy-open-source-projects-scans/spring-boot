@@ -76,6 +76,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
+import org.springframework.web.util.ServletRequestPathUtils;
+import org.springframework.web.util.pattern.PathPattern;
 
 /**
  * A custom {@link HandlerMapping} that makes {@link ExposableWebEndpoint web endpoints}
@@ -85,6 +87,7 @@ import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMappi
  * @author Madhura Bhave
  * @author Phillip Webb
  * @author Brian Clozel
+ * @author Wan bin yu
  * @since 4.0.0
  */
 @ImportRuntimeHints(AbstractWebMvcEndpointHandlerMappingRuntimeHints.class)
@@ -390,24 +393,29 @@ public abstract class AbstractWebMvcEndpointHandlerMapping extends RequestMappin
 		}
 
 		private Object getRemainingPathSegments(HttpServletRequest request) {
-			String[] pathTokens = tokenize(request, HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE, true);
-			String[] patternTokens = tokenize(request, HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, false);
-			int numberOfRemainingPathSegments = pathTokens.length - patternTokens.length + 1;
-			Assert.state(numberOfRemainingPathSegments >= 0, "Unable to extract remaining path segments");
-			String[] remainingPathSegments = new String[numberOfRemainingPathSegments];
-			System.arraycopy(pathTokens, patternTokens.length - 1, remainingPathSegments, 0,
-					numberOfRemainingPathSegments);
-			return remainingPathSegments;
+			PathPattern pathPattern = getPathPattern(request);
+			if (pathPattern.hasPatternSyntax()) {
+				String remainingSegments = pathPattern
+					.extractPathWithinPattern(
+							ServletRequestPathUtils.getParsedRequestPath(request).pathWithinApplication())
+					.value();
+				return tokenizePathSegments(remainingSegments);
+			}
+			return tokenizePathSegments(pathPattern.toString());
 		}
 
-		private String[] tokenize(HttpServletRequest request, String attributeName, boolean decode) {
-			String value = (String) request.getAttribute(attributeName);
+		private PathPattern getPathPattern(HttpServletRequest request) {
+			PathPattern pathPattern = (PathPattern) request
+				.getAttribute(HandlerMapping.BEST_MATCHING_PATH_PATTERN_ATTRIBUTE);
+			Assert.state(pathPattern != null, "'pathPattern' must not be null");
+			return pathPattern;
+		}
+
+		private String[] tokenizePathSegments(String value) {
 			String[] segments = StringUtils.tokenizeToStringArray(value, PATH_SEPARATOR, false, true);
-			if (decode) {
-				for (int i = 0; i < segments.length; i++) {
-					if (segments[i].contains("%")) {
-						segments[i] = StringUtils.uriDecode(segments[i], StandardCharsets.UTF_8);
-					}
+			for (int i = 0; i < segments.length; i++) {
+				if (segments[i].contains("%")) {
+					segments[i] = StringUtils.uriDecode(segments[i], StandardCharsets.UTF_8);
 				}
 			}
 			return segments;

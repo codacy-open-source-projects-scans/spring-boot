@@ -26,6 +26,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -57,6 +58,7 @@ import org.springframework.util.StringUtils;
  * The {@code 'extract'} tools command.
  *
  * @author Moritz Halbritter
+ * @author Dongliang Xie
  */
 class ExtractCommand extends Command {
 
@@ -85,7 +87,9 @@ class ExtractCommand extends Command {
 			"Name of the libraries directory. Only applicable when not using --launcher. Defaults to lib/");
 
 	private static final Option APPLICATION_FILENAME_OPTION = Option.of("application-filename", "string",
-			"Name of the application JAR file. Only applicable when not using --launcher. Defaults to the uber JAR filename");
+			"Name of the application JAR file. Only applicable when not using --launcher. Defaults to the uber JAR filename, with the extension replaced by .jar");
+
+	private static final String META_INF_DIRECTORY = "META-INF/";
 
 	private final Context context;
 
@@ -246,18 +250,25 @@ class ExtractCommand extends Command {
 		Manifest manifest = jarStructure.createLauncherManifest((library) -> librariesDirectory + library);
 		mkdirs(file.getParentFile());
 		try (JarOutputStream output = new JarOutputStream(new FileOutputStream(file))) {
-			ManfiestWriter manfiestWriter = (sourceJarFile) -> {
+			Set<String> writtenEntries = new HashSet<>();
+			ManifestWriter manifestWriter = (sourceJarFile) -> {
 				JarEntry entry = createJarEntry(JarFile.MANIFEST_NAME,
 						sourceJarFile.getJarEntry(JarFile.MANIFEST_NAME));
+				output.putNextEntry(createJarEntry(META_INF_DIRECTORY, entry));
+				output.closeEntry();
+				writtenEntries.add(META_INF_DIRECTORY);
 				output.putNextEntry(entry);
 				manifest.write(new BufferedOutputStream(output));
 				output.closeEntry();
 			};
-			EnumSet<Type> allowedTypes = EnumSet.of(Type.APPLICATION_CLASS_OR_RESOURCE, Type.META_INF);
-			Set<String> writtenEntries = new HashSet<>();
-			withJarEntries(this.context.getArchiveFile(), manfiestWriter, ((stream, jarEntry) -> {
+			EnumSet<Type> allowedTypes = EnumSet.of(Type.APPLICATION_CLASS_OR_RESOURCE, Type.META_INF,
+					Type.WEB_RESOURCE);
+			withJarEntries(this.context.getArchiveFile(), manifestWriter, ((stream, jarEntry) -> {
 				Entry entry = jarStructure.resolve(jarEntry);
 				if (entry != null && allowedTypes.contains(entry.type()) && StringUtils.hasLength(entry.location())) {
+					if (entry.type() == Type.WEB_RESOURCE) {
+						writeParentDirectories(output, writtenEntries, entry.location(), jarEntry);
+					}
 					JarEntry newJarEntry = createJarEntry(entry.location(), jarEntry);
 					if (writtenEntries.add(newJarEntry.getName())) {
 						output.putNextEntry(newJarEntry);
@@ -266,7 +277,7 @@ class ExtractCommand extends Command {
 					}
 					else {
 						if (!newJarEntry.isDirectory()) {
-							throw new IllegalStateException("Duplicate jar entry '%s' from original location '%s'"
+							throw new JarModeErrorException("Duplicate jar entry '%s' from original location '%s'"
 								.formatted(newJarEntry.getName(), entry.originalLocation()));
 						}
 					}
@@ -274,6 +285,19 @@ class ExtractCommand extends Command {
 			}));
 		}
 		copyTimestamps(this.context.getArchiveFile(), file);
+	}
+
+	private void writeParentDirectories(JarOutputStream output, Set<String> writtenEntries, String location,
+			JarEntry originalEntry) throws IOException {
+		int index = location.indexOf('/');
+		while (index != -1 && index < location.length() - 1) {
+			String directory = location.substring(0, index + 1);
+			if (writtenEntries.add(directory)) {
+				output.putNextEntry(createJarEntry(directory, originalEntry));
+				output.closeEntry();
+			}
+			index = location.indexOf('/', index + 1);
+		}
 	}
 
 	private void copyTimestamps(File source, File destination) throws IOException {
@@ -289,7 +313,11 @@ class ExtractCommand extends Command {
 		if (value != null) {
 			return value;
 		}
-		return this.context.getArchiveFile().getName();
+		File archiveFile = this.context.getArchiveFile();
+		if (ArchiveType.of(archiveFile) == ArchiveType.WAR) {
+			return stripExtension(archiveFile.getName()) + ".jar";
+		}
+		return archiveFile.getName();
 	}
 
 	private static void extractEntry(InputStream stream, JarEntry entry, File file) throws IOException {
@@ -344,11 +372,11 @@ class ExtractCommand extends Command {
 		withJarEntries(file, null, callback);
 	}
 
-	private static void withJarEntries(File file, @Nullable ManfiestWriter manfiestWriter, ThrowingConsumer callback)
+	private static void withJarEntries(File file, @Nullable ManifestWriter manifestWriter, ThrowingConsumer callback)
 			throws IOException {
 		try (JarFile jarFile = new JarFile(file)) {
-			if (manfiestWriter != null) {
-				manfiestWriter.writeManifest(jarFile);
+			if (manifestWriter != null) {
+				manifestWriter.writeManifest(jarFile);
 			}
 			Enumeration<JarEntry> entries = jarFile.entries();
 			while (entries.hasMoreElements()) {
@@ -363,12 +391,16 @@ class ExtractCommand extends Command {
 	}
 
 	private static File assertFileIsContainedInDirectory(File directory, File file, String name) throws IOException {
-		String canonicalOutputPath = directory.getCanonicalPath() + File.separator;
-		String canonicalEntryPath = file.getCanonicalPath();
-		Assert.state(canonicalEntryPath.startsWith(canonicalOutputPath),
+		Path canonicalOutputPath = directory.getCanonicalFile().toPath();
+		Path canonicalEntryPath = file.getCanonicalFile().toPath();
+		Assert.state(isFileContainedInDirectory(canonicalOutputPath, canonicalEntryPath),
 				() -> "Entry '%s' would be written to '%s'. This is outside the output location of '%s'. Verify the contents of your archive."
 					.formatted(name, canonicalEntryPath, canonicalOutputPath));
 		return file;
+	}
+
+	private static boolean isFileContainedInDirectory(Path directory, Path file) {
+		return !file.equals(directory) && file.startsWith(directory);
 	}
 
 	@FunctionalInterface
@@ -379,7 +411,7 @@ class ExtractCommand extends Command {
 	}
 
 	@FunctionalInterface
-	private interface ManfiestWriter {
+	private interface ManifestWriter {
 
 		void writeManifest(JarFile sourceJarFile) throws IOException;
 
@@ -515,9 +547,9 @@ class ExtractCommand extends Command {
 		}
 
 		private File assertLayerDirectoryLocation(File layerDirectory, String layerName) throws IOException {
-			String canonicalOutputPath = this.directory.getCanonicalPath() + File.separator;
-			String canonicalLayerPath = layerDirectory.getCanonicalPath();
-			Assert.state(canonicalLayerPath.startsWith(canonicalOutputPath),
+			Path canonicalOutputPath = this.directory.getCanonicalFile().toPath();
+			Path canonicalLayerPath = layerDirectory.getCanonicalFile().toPath();
+			Assert.state(isFileContainedInDirectory(canonicalOutputPath, canonicalLayerPath),
 					() -> "Layer '%s' would be written to '%s'. This is outside the output location of '%s'. Verify the contents of your archive."
 						.formatted(layerName, canonicalLayerPath, canonicalOutputPath));
 			return layerDirectory;

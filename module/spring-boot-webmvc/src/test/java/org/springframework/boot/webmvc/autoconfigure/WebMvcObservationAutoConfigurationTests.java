@@ -20,7 +20,6 @@ import java.util.EnumSet;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
-import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler.IgnoredMeters;
 import io.micrometer.core.instrument.observation.MeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.Observation.Context;
@@ -46,6 +45,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.server.observation.DefaultServerRequestObservationConvention;
+import org.springframework.http.server.observation.OpenTelemetryServerRequestObservationConvention;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -91,6 +91,18 @@ class WebMvcObservationAutoConfigurationTests {
 			assertThat(context.getBean(FilterRegistrationBean.class).getFilter())
 				.isInstanceOf(ServerHttpObservationFilter.class);
 		});
+	}
+
+	@Test
+	void defaultMicrometerConvention() {
+		this.contextRunner
+			.run((context) -> assertThat(context).hasSingleBean(DefaultServerRequestObservationConvention.class));
+	}
+
+	@Test
+	void openTelemetryConventionConfiguredViaProperties() {
+		this.contextRunner.withPropertyValues("management.observations.conventions=opentelemetry")
+			.run((context) -> assertThat(context).hasSingleBean(OpenTelemetryServerRequestObservationConvention.class));
 	}
 
 	@Test
@@ -263,7 +275,7 @@ class WebMvcObservationAutoConfigurationTests {
 
 		@Bean
 		MeterObservationHandler<Context> meterObservationHandler(MeterRegistry registry) {
-			return new DefaultMeterObservationHandler(registry, IgnoredMeters.LONG_TASK_TIMER);
+			return DefaultMeterObservationHandler.builder(registry).build();
 		}
 
 	}

@@ -138,7 +138,9 @@ class ProcessRunner {
 			return process.waitFor();
 		}
 		catch (InterruptedException ex) {
-			throw new IllegalStateException("Interrupted waiting for %s".formatted(process));
+			Thread.currentThread().interrupt();
+			process.destroy();
+			throw new IllegalStateException("Interrupted waiting for %s".formatted(process), ex);
 		}
 	}
 
@@ -176,10 +178,12 @@ class ProcessRunner {
 					}
 					line = reader.readLine();
 				}
-				this.latch.countDown();
 			}
 			catch (IOException ex) {
 				throw new UncheckedIOException("Failed to read process stream", ex);
+			}
+			finally {
+				this.latch.countDown();
 			}
 		}
 
@@ -190,6 +194,7 @@ class ProcessRunner {
 				return this.output.toString();
 			}
 			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
 				return "";
 			}
 		}

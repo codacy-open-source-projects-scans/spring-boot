@@ -61,7 +61,6 @@ class BuildRequestTests {
 	private static final ZoneId UTC = ZoneId.of("UTC");
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File tempDir;
 
 	@Test
@@ -168,6 +167,43 @@ class BuildRequestTests {
 			.withBuilder(ImageReference.of("spring/builder"))
 			.withTrustBuilder(true);
 		assertThat(request.isTrustBuilder()).isTrue();
+	}
+
+	@Test
+	void shouldUseDefaultRunImageWhenBuilderIsNotConfigured() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"));
+		assertThat(request.getDefaultRunImage())
+			.hasToString("docker.io/paketobuildpacks/ubuntu-resolute-run-tiny:latest");
+	}
+
+	@Test
+	void shouldNotUseDefaultRunImageWhenCustomBuilderIsConfigured() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"))
+			.withBuilder(ImageReference.of("spring/builder"));
+		assertThat(request.getDefaultRunImage()).isNull();
+	}
+
+	@Test
+	void shouldNotUseDefaultRunImageWhenDefaultBuilderIsConfigured() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"))
+			.withBuilder(ImageReference.of(BuildRequest.DEFAULT_BUILDER_IMAGE_REF));
+		assertThat(request.getDefaultRunImage()).isNull();
+	}
+
+	@Test
+	void shouldNotUseDefaultRunImageWhenDefaultBuilderWithOtherTagIsConfigured() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"))
+			.withBuilder(ImageReference.of(BuildRequest.DEFAULT_BUILDER_IMAGE_NAME + ":0.1.20"));
+		assertThat(request.getDefaultRunImage()).isNull();
+	}
+
+	@Test
+	void shouldUseDefaultRunImageWhenOtherRequestPropertiesChanged() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"))
+			.withTrustBuilder(true)
+			.withPublish(true);
+		assertThat(request.getDefaultRunImage())
+			.hasToString("docker.io/paketobuildpacks/ubuntu-resolute-run-tiny:latest");
 	}
 
 	@Test
@@ -323,6 +359,14 @@ class BuildRequestTests {
 		BuildRequest withCache = request.withBuildCache(Cache.bind("/tmp/build-cache"));
 		assertThat(request.getBuildCache()).isNull();
 		assertThat(withCache.getBuildCache()).isEqualTo(Cache.bind("/tmp/build-cache"));
+	}
+
+	@Test
+	void withBuildImageCacheAddsCache() throws IOException {
+		BuildRequest request = BuildRequest.forJarFile(writeTestJarFile("my-app-0.0.1.jar"));
+		BuildRequest withCache = request.withBuildCache(Cache.image("build-cache-image"));
+		assertThat(request.getBuildCache()).isNull();
+		assertThat(withCache.getBuildCache()).isEqualTo(Cache.image("build-cache-image"));
 	}
 
 	@Test

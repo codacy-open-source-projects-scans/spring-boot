@@ -178,8 +178,7 @@ public class Binder {
 			@Nullable Consumer<PropertyEditorRegistry> propertyEditorInitializer,
 			@Nullable BindHandler defaultBindHandler, @Nullable BindConstructorProvider constructorProvider) {
 		this(sources, placeholdersResolver,
-				(conversionService != null) ? Collections.singletonList(conversionService)
-						: (List<ConversionService>) null,
+				(conversionService != null) ? Collections.singletonList(conversionService) : null,
 				propertyEditorInitializer, defaultBindHandler, constructorProvider);
 	}
 
@@ -346,7 +345,6 @@ public class Binder {
 	 * @return the bound or created object
 	 * @since 2.2.0
 	 */
-	@SuppressWarnings("NullAway") // https://github.com/uber/NullAway/issues/1232
 	public <T> T bindOrCreate(ConfigurationPropertyName name, Bindable<T> target, @Nullable BindHandler handler) {
 		return bind(name, target, handler, true);
 	}

@@ -30,11 +30,13 @@ import org.springframework.context.annotation.Conditional;
  *
  * @author Phillip Webb
  * @since 4.0.0
+ * @deprecated since 4.1.2 in favor of {@link ConditionalOnDefaultServletWebSecurity}
  */
 @Target({ ElementType.TYPE, ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Conditional(DefaultWebSecurityCondition.class)
+@Conditional(DefaultServletWebSecurityCondition.class)
+@Deprecated(since = "4.1.2", forRemoval = true)
 public @interface ConditionalOnDefaultWebSecurity {
 
 }

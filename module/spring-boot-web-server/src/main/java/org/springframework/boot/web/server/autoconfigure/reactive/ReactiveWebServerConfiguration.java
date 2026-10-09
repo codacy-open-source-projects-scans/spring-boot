@@ -18,15 +18,11 @@ package org.springframework.boot.web.server.autoconfigure.reactive;
 
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.boot.web.server.WebServerFactoryCustomizerBeanPostProcessor;
@@ -37,7 +33,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ObjectUtils;
-import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 
 /**
  * {@link Configuration Configuration} for a reactive web server.
@@ -57,26 +52,17 @@ public class ReactiveWebServerConfiguration {
 		return new ReactiveWebServerFactoryCustomizer(serverProperties, sslBundles.getIfAvailable());
 	}
 
-	@Bean
-	@ConditionalOnMissingBean
-	@ConditionalOnProperty(name = "server.forward-headers-strategy", havingValue = "framework")
-	ForwardedHeaderTransformer forwardedHeaderTransformer() {
-		return new ForwardedHeaderTransformer();
-	}
-
 	/**
 	 * Registers a {@link WebServerFactoryCustomizerBeanPostProcessor}. Registered via
 	 * {@link ImportBeanDefinitionRegistrar} for early registration.
 	 */
-	static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar, BeanFactoryAware {
+	static class BeanPostProcessorsRegistrar implements ImportBeanDefinitionRegistrar {
 
-		private @Nullable ConfigurableListableBeanFactory beanFactory;
+		private final @Nullable ConfigurableListableBeanFactory beanFactory;
 
-		@Override
-		public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-			if (beanFactory instanceof ConfigurableListableBeanFactory listableBeanFactory) {
-				this.beanFactory = listableBeanFactory;
-			}
+		BeanPostProcessorsRegistrar(BeanFactory beanFactory) {
+			this.beanFactory = (beanFactory instanceof ConfigurableListableBeanFactory listableBeanFactory)
+					? listableBeanFactory : null;
 		}
 
 		@Override

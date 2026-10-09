@@ -62,6 +62,7 @@ import org.springframework.util.Assert;
  * @author Phillip Webb
  * @author Scott Frederick
  * @author Ondřej Světlík
+ * @author Wan bin yu
  */
 class ValueObjectBinder implements DataObjectBinder {
 
@@ -135,10 +136,20 @@ class ValueObjectBinder implements DataObjectBinder {
 				if (defaultValue.length == 0) {
 					return getNewDefaultValueInstanceIfPossible(context, type);
 				}
-				return convertDefaultValue(context.getConverter(), defaultValue, type, annotations);
+				return convertDefaultValue(context.getConverter(),
+						resolveDefaultValue(context.getPlaceholdersResolver(), defaultValue), type, annotations);
 			}
 		}
 		return context.getConverter().convert(null, type);
+	}
+
+	private String[] resolveDefaultValue(PlaceholdersResolver resolver, String[] defaultValue) {
+		String[] resolved = new String[defaultValue.length];
+		for (int i = 0; i < defaultValue.length; i++) {
+			Object value = resolver.resolvePlaceholders(defaultValue[i]);
+			resolved[i] = String.valueOf(value);
+		}
+		return resolved;
 	}
 
 	private <T> @Nullable T convertDefaultValue(BindConverter converter, String[] defaultValue, ResolvableType type,
@@ -339,7 +350,7 @@ class ValueObjectBinder implements DataObjectBinder {
 		@SuppressWarnings("unchecked")
 		static <T> @Nullable ValueObject<T> get(Constructor<?> bindConstructor, ResolvableType type,
 				ParameterNameDiscoverer parameterNameDiscoverer) {
-			@Nullable String @Nullable [] names = parameterNameDiscoverer.getParameterNames(bindConstructor);
+			@Nullable String[] names = parameterNameDiscoverer.getParameterNames(bindConstructor);
 			if (names == null) {
 				return null;
 			}
@@ -428,7 +439,7 @@ class ValueObjectBinder implements DataObjectBinder {
 
 		@Override
 		public @Nullable String @Nullable [] getParameterNames(Constructor<?> constructor) {
-			@Nullable String @Nullable [] names = this.delegate.getParameterNames(constructor);
+			@Nullable String[] names = this.delegate.getParameterNames(constructor);
 			if (names != null) {
 				return names;
 			}

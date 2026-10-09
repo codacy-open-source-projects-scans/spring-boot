@@ -43,7 +43,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ChangeableUrlsTests {
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File tempDir;
 
 	@Test
@@ -61,13 +60,7 @@ class ChangeableUrlsTests {
 	}
 
 	@Test
-	void httpUrl() throws Exception {
-		URL url = new URL("https://spring.io");
-		assertThat(ChangeableUrls.fromUrls(url)).isEmpty();
-	}
-
-	@Test
-	void httpsUrl() throws Exception {
+	void nonFileUrl() throws Exception {
 		URL url = new URL("https://spring.io");
 		assertThat(ChangeableUrls.fromUrls(url)).isEmpty();
 	}

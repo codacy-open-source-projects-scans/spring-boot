@@ -107,7 +107,7 @@ class Saml2RelyingPartyRegistrationConfiguration {
 					.forEach(credentials::add)));
 		builder.singleLogoutServiceLocation(properties.getSinglelogout().getUrl());
 		builder.singleLogoutServiceResponseLocation(properties.getSinglelogout().getResponseUrl());
-		@Nullable Saml2MessageBinding binding = properties.getSinglelogout().getBinding();
+		Saml2MessageBinding binding = properties.getSinglelogout().getBinding();
 		if (binding != null) {
 			builder.singleLogoutServiceBinding(binding);
 		}
@@ -194,7 +194,7 @@ class Saml2RelyingPartyRegistrationConfiguration {
 
 	private X509Certificate readCertificate(@Nullable Resource location) {
 		Assert.state(location != null, "No certificate location specified");
-		Assert.state(location.exists(), () -> "Certificate  location '" + location + "' does not exist");
+		Assert.state(location.exists(), () -> "Certificate location '" + location + "' does not exist");
 		try (InputStream inputStream = location.getInputStream()) {
 			PemContent pemContent = PemContent.load(inputStream);
 			List<X509Certificate> certificates = pemContent.getCertificates();

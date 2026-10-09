@@ -37,7 +37,10 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClass.Predicates;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaConstructor;
+import com.tngtech.archunit.core.domain.JavaConstructorCall;
 import com.tngtech.archunit.core.domain.JavaField;
+import com.tngtech.archunit.core.domain.JavaFieldAccess;
+import com.tngtech.archunit.core.domain.JavaFieldAccess.AccessType;
 import com.tngtech.archunit.core.domain.JavaMember;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -61,8 +64,15 @@ import com.tngtech.archunit.lang.syntax.elements.ClassesShould;
 import com.tngtech.archunit.lang.syntax.elements.GivenMethodsConjunction;
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition;
 
+import org.springframework.beans.factory.BeanClassLoaderAware;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.context.ResourceLoaderAware;
+import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.context.annotation.ImportSelector;
 import org.springframework.context.annotation.Role;
+import org.springframework.core.type.filter.TypeFilter;
 import org.springframework.lang.CheckReturnValue;
 import org.springframework.util.ResourceUtils;
 
@@ -77,6 +87,7 @@ import org.springframework.util.ResourceUtils;
  * @author Ngoc Nhan
  * @author Moritz Halbritter
  * @author Stefano Cordio
+ * @author Venkata Naga Sai Srikanth Gollapudi
  */
 final class ArchitectureRules {
 
@@ -111,6 +122,7 @@ final class ArchitectureRules {
 		rules.add(autoConfigurationClassesShouldBePublicAndFinal());
 		rules.add(autoConfigurationClassesShouldHaveNoPublicMembers());
 		rules.add(testAutoConfigurationClassesShouldBePackagePrivateAndFinal());
+		rules.add(importParticipantsShouldOnlyImplementAwareInterfacesIfTheyArePublic());
 		return List.copyOf(rules);
 	}
 
@@ -126,7 +138,11 @@ final class ArchitectureRules {
 
 	static List<ArchRule> configurationProperties(String annotationClass) {
 		return List.of(classLevelConfigurationPropertiesShouldNotSpecifyOnlyPrefixAttribute(annotationClass),
-				methodLevelConfigurationPropertiesShouldNotSpecifyOnlyPrefixAttribute(annotationClass));
+				methodLevelConfigurationPropertiesShouldNotSpecifyOnlyPrefixAttribute(annotationClass),
+				configurationPropertyOfTypeShouldUseImplementation(annotationClass, "java.util.Set",
+						List.of("java.util.LinkedHashSet")),
+				configurationPropertyOfTypeShouldUseImplementation(annotationClass, "java.util.Map",
+						List.of("java.util.LinkedHashMap", "java.util.EnumMap")));
 	}
 
 	static List<ArchRule> configurationPropertiesBinding(String annotationClass) {
@@ -181,12 +197,7 @@ final class ArchitectureRules {
 	}
 
 	private static ArchRule allPackagesShouldBeFreeOfTangles() {
-		return SlicesRuleDefinition.slices()
-			.matching("(**)")
-			.should()
-			.beFreeOfCycles()
-			.ignoreDependency("org.springframework.boot.env.EnvironmentPostProcessor",
-					"org.springframework.boot.SpringApplication");
+		return SlicesRuleDefinition.slices().matching("(**)").should().beFreeOfCycles();
 	}
 
 	private static ArchRule allBeanPostProcessorBeanMethodsShouldBeStaticAndNotCausePrematureInitialization() {
@@ -297,6 +308,36 @@ final class ArchitectureRules {
 	private static ArchRule noClassesShouldCallStringToLowerCaseWithoutLocale() {
 		return noClassesShould().callMethod(String.class, "toLowerCase")
 			.because(shouldUse("String.toLowerCase(Locale.ROOT)"));
+	}
+
+	private static ArchRule importParticipantsShouldOnlyImplementAwareInterfacesIfTheyArePublic() {
+		return ArchRuleDefinition.classes()
+			.that(areImportParticipants())
+			.and()
+			.areNotPublic()
+			.should(notDirectlyImplementAwareInterfaces())
+			.allowEmptyShould(true);
+	}
+
+	private static DescribedPredicate<JavaClass> areImportParticipants() {
+		return JavaClass.Predicates.implement(ImportBeanDefinitionRegistrar.class)
+			.or(JavaClass.Predicates.implement(ImportSelector.class))
+			.or(JavaClass.Predicates.implement(TypeFilter.class));
+	}
+
+	private static ArchCondition<JavaClass> notDirectlyImplementAwareInterfaces() {
+		Set<String> awareNames = Set.of(BeanClassLoaderAware.class.getName(), BeanFactoryAware.class.getName(),
+				EnvironmentAware.class.getName(), ResourceLoaderAware.class.getName());
+		return ArchCondition
+			.from(DescribedPredicate.describe("not directly implement BeanClassLoaderAware, BeanFactoryAware,"
+					+ " EnvironmentAware, or ResourceLoaderAware", (javaClass) -> {
+						for (JavaClass rawInterface : javaClass.getRawInterfaces()) {
+							if (awareNames.contains(rawInterface.getFullName())) {
+								return false;
+							}
+						}
+						return true;
+					}));
 	}
 
 	private static ArchRule conditionalOnMissingBeanShouldNotSpecifyOnlyATypeThatIsTheSameAsMethodReturnType(
@@ -426,6 +467,54 @@ final class ArchitectureRules {
 				}
 			}))
 			.allowEmptyShould(true);
+	}
+
+	private static ArchRule configurationPropertyOfTypeShouldUseImplementation(String annotationClass,
+			String propertyType, List<String> allowedImplementations) {
+		return ArchRuleDefinition.classes()
+			.that()
+			.areAnnotatedWith(annotationClass)
+			.or(areNestedInClassAnnotatedWith(annotationClass))
+			.should(useAllowedImplementationForProperties(propertyType, allowedImplementations))
+			.allowEmptyShould(true);
+	}
+
+	private static ArchCondition<JavaClass> useAllowedImplementationForProperties(String propertyType,
+			List<String> allowedImplementations) {
+		return check(
+				"use %s for properties of type %s".formatted(String.join(" or ", allowedImplementations), propertyType),
+				(javaClass, events) -> javaClass.getFields()
+					.stream()
+					.filter((field) -> propertyType.equals(field.getRawType().getName()))
+					.forEach((field) -> checkPropertyImplementation(field, allowedImplementations, events)));
+	}
+
+	private static void checkPropertyImplementation(JavaField field, List<String> allowedImplementations,
+			ConditionEvents events) {
+		field.getAccessesToSelf()
+			.stream()
+			.filter((access) -> access.getAccessType() == AccessType.SET)
+			.flatMap((access) -> initializerConstructorCalls(access).stream())
+			.filter((call) -> !allowedImplementations.contains(call.getTargetOwner().getName()))
+			.forEach((call) -> addViolation(events, field,
+					"%s should be initialized with %s instead of %s".formatted(field.getDescription(),
+							String.join(" or ", allowedImplementations), call.getTargetOwner().getName())));
+	}
+
+	private static List<JavaConstructorCall> initializerConstructorCalls(JavaFieldAccess fieldAccess) {
+		return fieldAccess.getOrigin()
+			.getConstructorCallsFromSelf()
+			.stream()
+			.filter((call) -> call.getLineNumber() == fieldAccess.getLineNumber())
+			.toList();
+	}
+
+	private static DescribedPredicate<JavaClass> areNestedInClassAnnotatedWith(String annotationClass) {
+		return DescribedPredicate.describe("one of its inner class",
+				(javaClass) -> javaClass.getEnclosingClass()
+					.map((enclosing) -> enclosing.isAnnotatedWith(annotationClass)
+							|| areNestedInClassAnnotatedWith(annotationClass).test(enclosing))
+					.orElse(false));
 	}
 
 	private static ArchRule autoConfigurationClassesShouldBePublicAndFinal() {

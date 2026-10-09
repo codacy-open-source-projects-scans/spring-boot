@@ -96,7 +96,6 @@ import org.springframework.util.CollectionUtils;
  *         // other assertions
  *     });
  * }</pre>
- * <p>
  *
  * @param <SELF> the "self" type for this runner
  * @param <C> the context type
@@ -110,7 +109,7 @@ import org.springframework.util.CollectionUtils;
  * @see ReactiveWebApplicationContextRunner
  * @see ApplicationContextAssert
  */
-public abstract class AbstractApplicationContextRunner<SELF extends AbstractApplicationContextRunner<SELF, C, A>, C extends ConfigurableApplicationContext, A extends ApplicationContextAssertProvider<C>> {
+public abstract class AbstractApplicationContextRunner<SELF extends AbstractApplicationContextRunner<SELF, C, A>, C extends ConfigurableApplicationContext, A extends ApplicationContextAssertProvider<A, C>> {
 
 	private final RunnerConfiguration<C> runnerConfiguration;
 

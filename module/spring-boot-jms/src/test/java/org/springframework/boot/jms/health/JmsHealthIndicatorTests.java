@@ -16,6 +16,8 @@
 
 package org.springframework.boot.jms.health;
 
+import java.time.Duration;
+
 import jakarta.jms.Connection;
 import jakarta.jms.ConnectionFactory;
 import jakarta.jms.ConnectionMetaData;
@@ -28,18 +30,44 @@ import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@link JmsHealthIndicator}.
  *
  * @author Stephane Nicoll
+ * @author Venkata Naga Sai Srikanth Gollapudi
  */
 class JmsHealthIndicatorTests {
+
+	@Test
+	@SuppressWarnings("NullAway") // Test null check
+	void createWhenStartTimeoutIsNullThrowsException() {
+		ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+		assertThatIllegalArgumentException().isThrownBy(() -> new JmsHealthIndicator(connectionFactory, null))
+			.withMessage("'startTimeout' must not be null");
+	}
+
+	@Test
+	void createWhenStartTimeoutIsZeroThrowsException() {
+		ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+		assertThatIllegalArgumentException().isThrownBy(() -> new JmsHealthIndicator(connectionFactory, Duration.ZERO))
+			.withMessage("'startTimeout' must be greater than 0");
+	}
+
+	@Test
+	void createWhenStartTimeoutIsNegativeThrowsException() {
+		ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> new JmsHealthIndicator(connectionFactory, Duration.ofMillis(-1)))
+			.withMessage("'startTimeout' must be greater than 0");
+	}
 
 	@Test
 	void jmsBrokerIsUp() throws JMSException {
@@ -97,7 +125,32 @@ class JmsHealthIndicatorTests {
 	}
 
 	@Test
+	void whenConnectionStartThrowsWatchdogThreadDoesNotAlsoCloseConnection() throws JMSException {
+		Connection connection = mock(Connection.class);
+		willThrow(new JMSException("Could not start", "123")).given(connection).start();
+		ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+		given(connectionFactory.createConnection()).willReturn(connection);
+		JmsHealthIndicator indicator = new JmsHealthIndicator(connectionFactory);
+		Health health = indicator.health();
+		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+		then(connection).should(after(Duration.ofSeconds(5).plusMillis(500).toMillis()).times(1)).close();
+	}
+
+	@Test
 	void whenConnectionStartIsUnresponsiveStatusIsDown() throws JMSException {
+		Health health = healthWhenConnectionStartIsUnresponsive(Duration.ofSeconds(5));
+		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+		assertThat((String) health.getDetails().get("error")).contains("Connection closed");
+	}
+
+	@Test
+	void whenConnectionStartIsUnresponsiveUsesConfiguredStartTimeout() throws JMSException {
+		Health health = healthWhenConnectionStartIsUnresponsive(Duration.ofMillis(10));
+		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+		assertThat((String) health.getDetails().get("error")).contains("Connection closed");
+	}
+
+	private Health healthWhenConnectionStartIsUnresponsive(Duration startTimeout) throws JMSException {
 		ConnectionMetaData connectionMetaData = mock(ConnectionMetaData.class);
 		given(connectionMetaData.getJMSProviderName()).willReturn("JMS test provider");
 		Connection connection = mock(Connection.class);
@@ -109,10 +162,8 @@ class JmsHealthIndicatorTests {
 		}).given(connection).close();
 		ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
 		given(connectionFactory.createConnection()).willReturn(connection);
-		JmsHealthIndicator indicator = new JmsHealthIndicator(connectionFactory);
-		Health health = indicator.health();
-		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
-		assertThat((String) health.getDetails().get("error")).contains("Connection closed");
+		JmsHealthIndicator indicator = new JmsHealthIndicator(connectionFactory, startTimeout);
+		return indicator.health();
 	}
 
 	private static final class UnresponsiveStartAnswer implements Answer<Void> {

@@ -128,6 +128,13 @@ public abstract class AbstractBuildLog implements BuildLog {
 		log();
 	}
 
+	@Override
+	public void distrosDoNotMatch(String runImageDistro, String builderImageDistro) {
+		log("Warning: Run image distribution '%s' does not match builder distribution '%s'. The images may not be compatible."
+			.formatted(runImageDistro, builderImageDistro));
+		log();
+	}
+
 	private String getDigest(Image image) {
 		List<String> digests = image.getDigests();
 		return (digests.isEmpty() ? "" : digests.get(0));

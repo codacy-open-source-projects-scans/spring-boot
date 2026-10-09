@@ -86,7 +86,6 @@ class ConfigDataEnvironmentPostProcessorIntegrationTests {
 	private SpringApplication application;
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	public File temp;
 
 	@BeforeEach
@@ -1022,13 +1021,13 @@ class ConfigDataEnvironmentPostProcessorIntegrationTests {
 	@Test
 	void runWhenHasNonOptionalImportThrowsException() {
 		assertThatExceptionOfType(ConfigDataResourceNotFoundException.class).isThrownBy(
-				() -> this.application.run("--spring.config.location=classpath:missing-appplication.properties"));
+				() -> this.application.run("--spring.config.location=classpath:missing-application.properties"));
 	}
 
 	@Test
 	void runWhenHasNonOptionalImportAndIgnoreNotFoundPropertyDoesNotThrowException() {
 		this.application.run("--spring.config.on-not-found=ignore",
-				"--spring.config.location=classpath:missing-appplication.properties");
+				"--spring.config.location=classpath:missing-application.properties");
 	}
 
 	@Test

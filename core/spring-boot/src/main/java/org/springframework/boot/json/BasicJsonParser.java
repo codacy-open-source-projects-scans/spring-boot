@@ -82,7 +82,7 @@ public class BasicJsonParser extends AbstractJsonParser {
 		Map<String, Object> map = new LinkedHashMap<>();
 		json = trimEdges(json, '{', '}').trim();
 		for (String pair : tokenize(json)) {
-			String @Nullable [] split = StringUtils.split(pair, ":");
+			String[] split = StringUtils.split(pair, ":");
 			Assert.state(split != null, () -> "Unable to parse '%s'".formatted(pair));
 			@Nullable String[] rawElement = StringUtils.trimArrayElements(split);
 			String rawKey = rawElement[0];
@@ -155,7 +155,12 @@ public class BasicJsonParser extends AbstractJsonParser {
 				build.setLength(0);
 			}
 			else if (ch == '\\') {
-				tracking.set(Tracked.ESCAPE, 1);
+				if (tracking.in(Tracked.OBJECT, Tracked.LIST)) {
+					build.append(ch);
+				}
+				else {
+					tracking.set(Tracked.ESCAPE, 1);
+				}
 			}
 			else {
 				build.append(ch);

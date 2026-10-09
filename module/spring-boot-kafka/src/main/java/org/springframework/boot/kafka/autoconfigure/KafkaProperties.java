@@ -21,7 +21,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,7 +41,6 @@ import org.springframework.boot.convert.DurationUnit;
 import org.springframework.core.io.Resource;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.util.unit.DataSize;
 
@@ -59,6 +58,7 @@ import org.springframework.util.unit.DataSize;
  * @author Andy Wilkinson
  * @author Scott Frederick
  * @author Yanming Zhou
+ * @author Nikita Kibitkin
  * @since 4.0.0
  */
 @ConfigurationProperties("spring.kafka")
@@ -79,7 +79,7 @@ public class KafkaProperties {
 	 * Additional properties, common to producers and consumers, used to configure the
 	 * client.
 	 */
-	private final Map<String, String> properties = new HashMap<>();
+	private final Map<String, String> properties = new LinkedHashMap<>();
 
 	private final Consumer consumer = new Consumer();
 
@@ -161,20 +161,15 @@ public class KafkaProperties {
 		return this.retry;
 	}
 
+	/**
+	 * Create an initial map of properties for common settings.
+	 * @return the consumer properties initialized with the customizations defined on this
+	 * instance
+	 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of {@link KafkaConfigBuilder}
+	 */
+	@Deprecated(since = "4.2.0", forRemoval = true)
 	private Map<String, Object> buildCommonProperties() {
-		Map<String, Object> properties = new HashMap<>();
-		if (this.bootstrapServers != null) {
-			properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
-		}
-		if (this.clientId != null) {
-			properties.put(CommonClientConfigs.CLIENT_ID_CONFIG, this.clientId);
-		}
-		properties.putAll(this.ssl.buildProperties());
-		properties.putAll(this.security.buildProperties());
-		if (!CollectionUtils.isEmpty(this.properties)) {
-			properties.putAll(this.properties);
-		}
-		return properties;
+		return KafkaConfigBuilder.of(this).initializeKafkaConfig();
 	}
 
 	/**
@@ -182,13 +177,13 @@ public class KafkaProperties {
 	 * <p>
 	 * This allows you to add additional properties, if necessary, and override the
 	 * default {@code kafkaConsumerFactory} bean.
-	 * @return the consumer properties initialized with the customizations defined on this
-	 * instance
+	 * @return common and consumer properties initialized with the customizations defined
+	 * on this instance
+	 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of {@link KafkaConfigBuilder}
 	 */
+	@Deprecated(since = "4.2.0", forRemoval = true)
 	public Map<String, Object> buildConsumerProperties() {
-		Map<String, Object> properties = buildCommonProperties();
-		properties.putAll(this.consumer.buildProperties());
-		return properties;
+		return KafkaConfigBuilder.of(this).consumer().build();
 	}
 
 	/**
@@ -196,13 +191,13 @@ public class KafkaProperties {
 	 * <p>
 	 * This allows you to add additional properties, if necessary, and override the
 	 * default {@code kafkaProducerFactory} bean.
-	 * @return the producer properties initialized with the customizations defined on this
-	 * instance
+	 * @return common and producer properties initialized with the customizations defined
+	 * on this instance
+	 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of {@link KafkaConfigBuilder}
 	 */
+	@Deprecated(since = "4.2.0", forRemoval = true)
 	public Map<String, Object> buildProducerProperties() {
-		Map<String, Object> properties = buildCommonProperties();
-		properties.putAll(this.producer.buildProperties());
-		return properties;
+		return KafkaConfigBuilder.of(this).producer().build();
 	}
 
 	/**
@@ -210,26 +205,26 @@ public class KafkaProperties {
 	 * <p>
 	 * This allows you to add additional properties, if necessary, and override the
 	 * default {@code kafkaAdmin} bean.
-	 * @return the admin properties initialized with the customizations defined on this
-	 * instance
+	 * @return common and admin properties initialized with the customizations defined on
+	 * this instance
+	 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of {@link KafkaConfigBuilder}
 	 */
+	@Deprecated(since = "4.2.0", forRemoval = true)
 	public Map<String, Object> buildAdminProperties() {
-		Map<String, Object> properties = buildCommonProperties();
-		properties.putAll(this.admin.buildProperties());
-		return properties;
+		return KafkaConfigBuilder.of(this).admin().build();
 	}
 
 	/**
 	 * Create an initial map of streams properties from the state of this instance.
 	 * <p>
 	 * This allows you to add additional properties, if necessary.
-	 * @return the streams properties initialized with the customizations defined on this
-	 * instance
+	 * @return common and streams properties initialized with the customizations defined
+	 * on this instance
+	 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of {@link KafkaConfigBuilder}
 	 */
+	@Deprecated(since = "4.2.0", forRemoval = true)
 	public Map<String, Object> buildStreamsProperties() {
-		Map<String, Object> properties = buildCommonProperties();
-		properties.putAll(this.streams.buildProperties());
-		return properties;
+		return KafkaConfigBuilder.of(this).streams().build();
 	}
 
 	public static class Consumer {
@@ -318,7 +313,7 @@ public class KafkaProperties {
 		/**
 		 * Additional consumer-specific properties used to configure the client.
 		 */
-		private final Map<String, String> properties = new HashMap<>();
+		private final Map<String, String> properties = new LinkedHashMap<>();
 
 		public Ssl getSsl() {
 			return this.ssl;
@@ -444,6 +439,14 @@ public class KafkaProperties {
 			return this.properties;
 		}
 
+		/**
+		 * Build the relevant consumer properties.
+		 * @return the consumer properties initialized with the customizations defined on
+		 * this instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
 		public Map<String, Object> buildProperties() {
 			Properties properties = new Properties();
 			PropertyMapper map = PropertyMapper.get();
@@ -540,7 +543,7 @@ public class KafkaProperties {
 		/**
 		 * Additional producer-specific properties used to configure the client.
 		 */
-		private final Map<String, String> properties = new HashMap<>();
+		private final Map<String, String> properties = new LinkedHashMap<>();
 
 		public Ssl getSsl() {
 			return this.ssl;
@@ -634,6 +637,14 @@ public class KafkaProperties {
 			return this.properties;
 		}
 
+		/**
+		 * Build the relevant producer properties.
+		 * @return the producer properties initialized with the customizations defined on
+		 * this instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
 		public Map<String, Object> buildProperties() {
 			Properties properties = new Properties();
 			PropertyMapper map = PropertyMapper.get();
@@ -653,7 +664,7 @@ public class KafkaProperties {
 
 	}
 
-	public static class Admin {
+	public static class SimpleAdmin {
 
 		private final Ssl ssl = new Ssl();
 
@@ -667,7 +678,7 @@ public class KafkaProperties {
 		/**
 		 * Additional admin-specific properties used to configure the client.
 		 */
-		private final Map<String, String> properties = new HashMap<>();
+		private final Map<String, String> properties = new LinkedHashMap<>();
 
 		/**
 		 * Close timeout.
@@ -683,17 +694,6 @@ public class KafkaProperties {
 		 * Whether to fail fast if the broker is not available on startup.
 		 */
 		private boolean failFast;
-
-		/**
-		 * Whether to enable modification of existing topic configuration.
-		 */
-		private boolean modifyTopicConfigs;
-
-		/**
-		 * Whether to automatically create topics during context initialization. When set
-		 * to false, disables automatic topic creation during context initialization.
-		 */
-		private boolean autoCreate = true;
 
 		public Ssl getSsl() {
 			return this.ssl;
@@ -735,6 +735,40 @@ public class KafkaProperties {
 			this.failFast = failFast;
 		}
 
+		public Map<String, String> getProperties() {
+			return this.properties;
+		}
+
+		/**
+		 * Build the relevant admin properties.
+		 * @return the admin properties initialized with the customizations defined on
+		 * this instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
+		public Map<String, Object> buildProperties() {
+			Properties properties = new Properties();
+			PropertyMapper map = PropertyMapper.get();
+			map.from(this::getClientId).to(properties.in(ProducerConfig.CLIENT_ID_CONFIG));
+			return properties.with(this.ssl, this.security, this.properties);
+		}
+
+	}
+
+	public static class Admin extends SimpleAdmin {
+
+		/**
+		 * Whether to enable modification of existing topic configuration.
+		 */
+		private boolean modifyTopicConfigs;
+
+		/**
+		 * Whether to automatically create topics during context initialization. When set
+		 * to false, disables automatic topic creation during context initialization.
+		 */
+		private boolean autoCreate = true;
+
 		public boolean isModifyTopicConfigs() {
 			return this.modifyTopicConfigs;
 		}
@@ -749,17 +783,6 @@ public class KafkaProperties {
 
 		public void setAutoCreate(boolean autoCreate) {
 			this.autoCreate = autoCreate;
-		}
-
-		public Map<String, String> getProperties() {
-			return this.properties;
-		}
-
-		public Map<String, Object> buildProperties() {
-			Properties properties = new Properties();
-			PropertyMapper map = PropertyMapper.get();
-			map.from(this::getClientId).to(properties.in(ProducerConfig.CLIENT_ID_CONFIG));
-			return properties.with(this.ssl, this.security, this.properties);
 		}
 
 	}
@@ -813,9 +836,14 @@ public class KafkaProperties {
 		private @Nullable String stateDir;
 
 		/**
+		 * Whether the consumer should leave the group when stopping Kafka Streams.
+		 */
+		private boolean leaveGroupOnClose;
+
+		/**
 		 * Additional Kafka properties used to configure the streams.
 		 */
-		private final Map<String, String> properties = new HashMap<>();
+		private final Map<String, String> properties = new LinkedHashMap<>();
 
 		public Ssl getSsl() {
 			return this.ssl;
@@ -885,10 +913,26 @@ public class KafkaProperties {
 			this.stateDir = stateDir;
 		}
 
+		public boolean isLeaveGroupOnClose() {
+			return this.leaveGroupOnClose;
+		}
+
+		public void setLeaveGroupOnClose(boolean leaveGroupOnClose) {
+			this.leaveGroupOnClose = leaveGroupOnClose;
+		}
+
 		public Map<String, String> getProperties() {
 			return this.properties;
 		}
 
+		/**
+		 * Build the relevant stream properties.
+		 * @return the stream properties initialized with the customizations defined on
+		 * this instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
 		public Map<String, Object> buildProperties() {
 			Properties properties = new Properties();
 			PropertyMapper map = PropertyMapper.get();
@@ -906,6 +950,8 @@ public class KafkaProperties {
 	}
 
 	public static class Template {
+
+		private @Nullable SimpleAdmin admin;
 
 		/**
 		 * Default topic to which messages are sent.
@@ -932,6 +978,14 @@ public class KafkaProperties {
 		 * Whether to enable observation.
 		 */
 		private boolean observationEnabled;
+
+		public @Nullable SimpleAdmin getAdmin() {
+			return this.admin;
+		}
+
+		public void setAdmin(@Nullable SimpleAdmin admin) {
+			this.admin = admin;
+		}
 
 		public @Nullable String getDefaultTopic() {
 			return this.defaultTopic;
@@ -990,6 +1044,8 @@ public class KafkaProperties {
 			BATCH
 
 		}
+
+		private @Nullable SimpleAdmin admin;
 
 		/**
 		 * Listener type.
@@ -1080,6 +1136,12 @@ public class KafkaProperties {
 		private boolean immediateStop;
 
 		/**
+		 * Whether the container waits for in-flight asynchronous listener results to
+		 * complete, within its shutdown timeout, when it stops.
+		 */
+		private boolean awaitAsyncResultsOnStop;
+
+		/**
 		 * Whether to auto start the container.
 		 */
 		private boolean autoStartup = true;
@@ -1099,6 +1161,14 @@ public class KafkaProperties {
 		 * Time between retries after authentication exceptions.
 		 */
 		private @Nullable Duration authExceptionRetryInterval;
+
+		public @Nullable SimpleAdmin getAdmin() {
+			return this.admin;
+		}
+
+		public void setAdmin(@Nullable SimpleAdmin admin) {
+			this.admin = admin;
+		}
 
 		public Type getType() {
 			return this.type;
@@ -1226,6 +1296,14 @@ public class KafkaProperties {
 
 		public void setImmediateStop(boolean immediateStop) {
 			this.immediateStop = immediateStop;
+		}
+
+		public boolean isAwaitAsyncResultsOnStop() {
+			return this.awaitAsyncResultsOnStop;
+		}
+
+		public void setAwaitAsyncResultsOnStop(boolean awaitAsyncResultsOnStop) {
+			this.awaitAsyncResultsOnStop = awaitAsyncResultsOnStop;
 		}
 
 		public boolean isAutoStartup() {
@@ -1420,6 +1498,14 @@ public class KafkaProperties {
 			this.protocol = protocol;
 		}
 
+		/**
+		 * Build the relevant SSL properties.
+		 * @return the SSL properties initialized with the customizations defined on this
+		 * instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
 		public Map<String, Object> buildProperties() {
 			validate();
 			String bundleName = getBundle();
@@ -1447,7 +1533,6 @@ public class KafkaProperties {
 			return properties;
 		}
 
-		@SuppressWarnings("NullAway") // Doesn't detect lambda with correct nullability
 		private void validate() {
 			MutuallyExclusiveConfigurationPropertiesException.throwIfMultipleMatchingValuesIn((entries) -> {
 				entries.put("spring.kafka.ssl.key-store-key", getKeyStoreKey());
@@ -1510,7 +1595,7 @@ public class KafkaProperties {
 		/**
 		 * Additional JAAS options.
 		 */
-		private final Map<String, String> options = new HashMap<>();
+		private final Map<String, String> options = new LinkedHashMap<>();
 
 		public boolean isEnabled() {
 			return this.enabled;
@@ -1563,6 +1648,14 @@ public class KafkaProperties {
 			this.protocol = protocol;
 		}
 
+		/**
+		 * Build the relevant security properties.
+		 * @return the security properties initialized with the customizations defined on
+		 * this instance
+		 * @deprecated since 4.2.0 for removal in 4.4.0 in favor of
+		 * {@link KafkaConfigBuilder}
+		 */
+		@Deprecated(since = "4.2.0", forRemoval = true)
 		public Map<String, Object> buildProperties() {
 			Properties properties = new Properties();
 			PropertyMapper map = PropertyMapper.get();
@@ -1741,7 +1834,7 @@ public class KafkaProperties {
 	}
 
 	@SuppressWarnings("serial")
-	private static final class Properties extends HashMap<String, Object> {
+	private static final class Properties extends LinkedHashMap<String, Object> {
 
 		<V> java.util.function.Consumer<V> in(String key) {
 			return (value) -> put(key, value);

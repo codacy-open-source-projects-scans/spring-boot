@@ -41,7 +41,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 class WritableJsonTests {
 
 	@TempDir
-	@SuppressWarnings("NullAway.Init")
 	File temp;
 
 	@Test
@@ -64,6 +63,17 @@ class WritableJsonTests {
 	void toByteArrayReturnsByteArray() {
 		WritableJson writable = (out) -> out.append("{}");
 		assertThat(writable.toByteArray()).isEqualTo("{}".getBytes());
+	}
+
+	@Test
+	void toByteArrayWhenContentIsAppendedCharByCharWritesSupplementaryCharacters() {
+		String emoji = new String(Character.toChars(0x1F600));
+		WritableJson writable = (out) -> {
+			for (int i = 0; i < emoji.length(); i++) {
+				out.append(emoji.charAt(i));
+			}
+		};
+		assertThat(writable.toByteArray(StandardCharsets.UTF_8)).isEqualTo(emoji.getBytes(StandardCharsets.UTF_8));
 	}
 
 	@Test

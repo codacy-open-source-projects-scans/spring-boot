@@ -18,8 +18,8 @@ package smoketest.secure.jersey;
 
 import org.junit.jupiter.api.Test;
 
-import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Madhura Bhave
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT,
 		properties = { "management.server.port=0", "spring.jersey.application-path=/example" })
 class ManagementPortCustomApplicationPathJerseyTests extends AbstractJerseySecureTests {
 
@@ -45,8 +45,8 @@ class ManagementPortCustomApplicationPathJerseyTests extends AbstractJerseySecur
 
 	@Test
 	void actuatorPathOnMainPortShouldNotMatch() {
-		ResponseEntity<String> entity = new TestRestTemplate()
-			.getForEntity("http://localhost:" + this.port + "/example/actuator/health", String.class);
+		ResponseEntity<String> entity = getForEntity(restClient(),
+				"http://localhost:" + this.port + "/example/actuator/health");
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 	}
 

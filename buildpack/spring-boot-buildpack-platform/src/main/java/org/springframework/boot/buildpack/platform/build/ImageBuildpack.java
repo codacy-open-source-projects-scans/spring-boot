@@ -49,6 +49,7 @@ import org.springframework.util.StreamUtils;
  *
  * @author Scott Frederick
  * @author Phillip Webb
+ * @author Junhwan Choi
  */
 final class ImageBuildpack implements Buildpack {
 
@@ -132,10 +133,31 @@ final class ImageBuildpack implements Buildpack {
 
 		private Path createLayerFile(TarArchive tarArchive) throws IOException {
 			Path sourceTarFile = Files.createTempFile("create-builder-scratch-source-", null);
-			try (OutputStream out = Files.newOutputStream(sourceTarFile)) {
-				tarArchive.writeTo(out);
+			try {
+				try (OutputStream out = Files.newOutputStream(sourceTarFile)) {
+					tarArchive.writeTo(out);
+				}
+				Path layerFile = Files.createTempFile("create-builder-scratch-", null);
+				try {
+					writeLayerFile(layerFile, sourceTarFile);
+				}
+				catch (IOException | RuntimeException ex) {
+					try {
+						Files.deleteIfExists(layerFile);
+					}
+					catch (IOException suppressed) {
+						ex.addSuppressed(suppressed);
+					}
+					throw ex;
+				}
+				return layerFile;
 			}
-			Path layerFile = Files.createTempFile("create-builder-scratch-", null);
+			finally {
+				Files.deleteIfExists(sourceTarFile);
+			}
+		}
+
+		private void writeLayerFile(Path layerFile, Path sourceTarFile) throws IOException {
 			try (TarArchiveOutputStream out = new TarArchiveOutputStream(Files.newOutputStream(layerFile))) {
 				try (TarArchiveInputStream in = new TarArchiveInputStream(Files.newInputStream(sourceTarFile))) {
 					out.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX);
@@ -153,14 +175,14 @@ final class ImageBuildpack implements Buildpack {
 					out.finish();
 				}
 			}
-			return layerFile;
 		}
 
 		void apply(IOConsumer<Layer> layers) throws IOException {
 			for (Path path : this.layerFiles) {
 				layers.accept(Layer.fromTarArchive((out) -> {
-					InputStream in = Files.newInputStream(path);
-					StreamUtils.copy(in, out);
+					try (InputStream in = Files.newInputStream(path)) {
+						StreamUtils.copy(in, out);
+					}
 				}));
 				Files.delete(path);
 			}

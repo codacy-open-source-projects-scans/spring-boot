@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-present the original author or authors.
  *
- * Licensed under the Apache License, Version 2.0 (the License);
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -54,6 +54,7 @@ dependencies {
 	optional("org.cyclonedx:cyclonedx-gradle-plugin") {
 		exclude(group: "javax.annotation", module: "javax.annotation-api")
 		exclude(group: "javax.inject", module: "javax.inject")
+		exclude(group: "org.slf4j", module: "jcl-over-slf4j")
 	}
 	optional("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
 
@@ -65,9 +66,10 @@ dependencies {
 	testImplementation("org.apache.httpcomponents.client5:httpclient5")
 	testImplementation("org.graalvm.buildtools:native-gradle-plugin")
 	testImplementation("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+	testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinVersion")
 	testImplementation("org.jetbrains.kotlin:kotlin-compiler-runner:$kotlinVersion")
 	testImplementation("org.jetbrains.kotlin:kotlin-daemon-client:$kotlinVersion")
-	testImplementation("org.tomlj:tomlj:1.0.0")
+	testImplementation("org.tomlj:tomlj")
 	testImplementation("tools.jackson.core:jackson-databind")
 }
 

@@ -55,7 +55,8 @@ import org.springframework.web.reactive.function.client.WebClient;
  * @since 4.0.0
  */
 @AutoConfiguration(afterName = { "org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration",
-		"org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration" })
+		"org.springframework.boot.jackson2.autoconfigure.Jackson2AutoConfiguration",
+		"org.springframework.boot.kotlinx.serialization.json.autoconfigure.KotlinxSerializationJsonAutoConfiguration" })
 @ConditionalOnClass({ CodecConfigurer.class, WebClient.class })
 public final class CodecsAutoConfiguration {
 
@@ -103,6 +104,7 @@ public final class CodecsAutoConfiguration {
 	static class KotlinxSerializationJsonCodecConfiguration {
 
 		@Bean
+		@Order(0)
 		@ConditionalOnBean(Json.class)
 		CodecCustomizer kotlinxJsonCodecCustomizer(Json json, ResourceLoader resourceLoader) {
 			ClassLoader classLoader = resourceLoader.getClassLoader();
